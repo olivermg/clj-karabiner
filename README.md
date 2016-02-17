@@ -1,5 +1,7 @@
 # clj-karabiner
 
+[![Continuous Integration status](https://secure.travis-ci.org/olivermg/clj-karabiner.png)](http://travis-ci.org/olivermg/clj-karabiner)
+
 A Clojure library that provides some custom data structures that I found to be helpful.
 
 Sure, you can build your own data structures on top of maps etc., but in many cases that

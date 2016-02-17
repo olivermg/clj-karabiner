@@ -1,6 +1,12 @@
 # clj-karabiner
 
-A Clojure library designed to ... well, that part is up to you.
+A Clojure library that provides some custom data structures that I found to be helpful.
+
+Sure, you can build your own data structures on top of maps etc., but in many cases that
+means you also have to provide custom functions like =, assoc, dissoc, merge etc.
+
+The custom data structures here provide special features but still allow you to make use
+of Clojure's native functions (as long as this makes sense).
 
 ## Usage
 

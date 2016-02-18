@@ -64,6 +64,3 @@
 (defn new-lazymap
   [contents]
   (->LazyMap contents))
-
-
-(comment (def m1 (new-lazymap {:a 11 :b 22})))

@@ -87,12 +87,3 @@
 
   ([content]
    (new-dbmap content (set (keys content)))))
-
-(def m1 (new-dbmap {:a [1 2 3] :b 22 :c (delay 33)} #{:a :c}))
-(def m2 (assoc m1 :c (delay 333)))
-(def m3 (dissoc m2 :b))
-(def m4 (merge m3 {:d 44}))
-(r/relevants m4)
-(t/changes m4)
-(props m4)
-(refs m4)

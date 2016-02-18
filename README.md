@@ -14,6 +14,8 @@ of Clojure's native functions (as long as this makes sense).
 
 FIXME
 
+Still alpha!
+
 ## License
 
 Distributed under the MIT License (MIT).

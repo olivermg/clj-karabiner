@@ -1,9 +1,6 @@
-<img src="karabiner.png" style="float: right;">
-
 # clj-karabiner [![Continuous Integration status](https://secure.travis-ci.org/olivermg/clj-karabiner.png)](http://travis-ci.org/olivermg/clj-karabiner) [![Clojars Project](https://img.shields.io/clojars/v/clj-karabiner.svg)](https://clojars.org/clj-karabiner)
 
 [![Clojars Project](https://clojars.org/clj-karabiner/latest-version.svg)](https://clojars.org/clj-karabiner)
-
 
 A Clojure library that provides some custom data structures that I found to be helpful.
 

@@ -6,7 +6,7 @@
 
 (deftest laziness-1
   (testing "laziness"
-    (let [m1 (new-dbmap {:a 11 :b (delay 22) :c [1 2 3]} #{:a :c})]
+    (let [m1 (new-dbmap (delay {:a 11 :b 22 :c [1 2 3]}) #{:a :c})]
       (is (= (:b m1) 22))
       (is (= (m1 :b) 22)))))
 

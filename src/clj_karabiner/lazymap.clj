@@ -47,15 +47,9 @@
 
   clojure.lang.ILookup
   (valAt [this key]
-    (let [uv (.valAt (realize contents) key)]
-      (if (delay? uv)
-        @uv
-        uv)))
+    (.valAt (realize contents) key))
   (valAt [this key not-found]
-    (let [uv (.valAt (realize contents) key not-found)]
-      (if (delay? uv)
-        @uv
-        uv)))
+    (.valAt (realize contents) key not-found))
 
   clojure.lang.IFn
   (invoke [this key]
@@ -63,7 +57,9 @@
 
   java.lang.Object
   (hashCode [this]
-    (if hashval
+    (if (and hashval
+             (delay? contents)
+             (not (realized? contents)))
       hashval
       (.hashCode (realize contents))))
 

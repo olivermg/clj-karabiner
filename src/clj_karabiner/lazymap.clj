@@ -1,51 +1,58 @@
 (ns clj-karabiner.lazymap)
 
 
-(deftype LazyMap [contents]
+(defn- realize
+  [val]
+  (if (delay? val)
+    @val
+    val))
+
+
+(deftype LazyMap [hashval contents]
 
   clojure.lang.IPersistentMap
   (assoc [this key val]
-    (LazyMap. (.assoc contents key val)))
+    (LazyMap. hashval (.assoc (realize contents) key val)))
   (assocEx [this key val]
-    (LazyMap. (.assoc contents key val)))
+    (LazyMap. hashval (.assoc (realize contents) key val)))
   (without [this key]
-    (LazyMap. (.without contents key)))
+    (LazyMap. hashval (.without (realize contents) key)))
 
   java.lang.Iterable
   (iterator [this]
-    (.iterator contents))
+    (.iterator (realize contents)))
 
   clojure.lang.Associative
   (containsKey [this key]
-    (.containsKey contents key))
+    (.containsKey (realize contents) key))
   (entryAt [this key]
-    (.entryAt contents key))
+    (.entryAt (realize contents) key))
 
   clojure.lang.IPersistentCollection
   (count [this]
-    (.count contents))
+    (.count (realize contents)))
   (cons [this o]
-    (LazyMap. (.cons contents o)))
+    (LazyMap. hashval (.cons (realize contents) o)))
   (empty [this]
-    (LazyMap. {}))
+    (LazyMap. hashval {}))
   (equiv [this o]
     (or (and (instance? LazyMap o)
-             (.equiv contents (.-contents o)))
+             (= (.hashCode this) (.hashCode o)))
         (and (instance? clojure.lang.IPersistentMap o)
-             (.equiv contents o))))
+             (= (.hashCode this) (.hashCode o)))))
 
   clojure.lang.Seqable
   (seq [this]
-    (.seq contents))
+    (.seq (realize contents)))
 
   clojure.lang.ILookup
   (valAt [this key]
-    (let [uv (.valAt contents key)]
+    (let [uv (.valAt (realize contents) key)]
       (if (delay? uv)
         @uv
         uv)))
   (valAt [this key not-found]
-    (let [uv (.valAt contents key not-found)]
+    (let [uv (.valAt (realize contents) key not-found)]
       (if (delay? uv)
         @uv
         uv)))
@@ -56,11 +63,16 @@
 
   java.lang.Object
   (hashCode [this]
-    (.hashCode contents))
+    (if hashval
+      hashval
+      (.hashCode (realize contents))))
 
   java.util.Map)
 
 
 (defn new-lazymap
-  [contents]
-  (->LazyMap contents))
+  ([hashval contents]
+   (->LazyMap hashval contents))
+
+  ([contents]
+   (new-lazymap nil contents)))

@@ -28,8 +28,23 @@
       (is (= (d/diff m1 m5) '({:b 22 :c 33} {:c 3333 :d 44} {:a [1 2 3]}))))))
 
 (deftest laziness-1
-  (testing "lazyness"
-    (let [m1 (new-lazymap {:a 11 :b (delay 22)})]
+  (testing "laziness"
+    (let [m1 (new-lazymap nil (delay {:a 11 :b 22}))
+          m2 (new-lazymap 123 (delay (throw (ex-info "should not happen on =" {}))
+                                     {:a 11 :b 22}))
+          m3 (new-lazymap nil (delay (throw (ex-info "will happen on =" {}))
+                                     {:a 11 :b 22}))
+          m4 (new-lazymap nil (delay {:a 11 :b 22}))
+          m5 (new-lazymap 123 {:a 1})]
       (is (= (m1 :a) 11))
       (is (= (m1 :b) 22))
-      (is (= (:b m1) 22)))))
+      (is (= (:b m1) 22))
+      (is (not= m1 m2))
+      (is (thrown? Exception (not= m1 m3)))
+      (is (thrown? Exception (m2 :a)))
+      (is (thrown? Exception (:a m2)))
+      (is (thrown? Exception (m3 :b)))
+      (is (thrown? Exception (:b m3)))
+      (is (= m1 m4))
+      (is (= m2 m5))
+      (is (= (:a m5) 1)))))

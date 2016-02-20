@@ -59,7 +59,8 @@
   (hashCode [this]
     (if (and hashval
              (delay? contents)
-             (not (realized? contents)))
+             ;;(not (realized? contents))
+             )
       hashval
       (.hashCode (realize contents))))
 

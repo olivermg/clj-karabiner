@@ -35,7 +35,8 @@
           m3 (new-lazymap nil (delay (throw (ex-info "will happen on =" {}))
                                      {:a 11 :b 22}))
           m4 (new-lazymap nil (delay {:a 11 :b 22}))
-          m5 (new-lazymap 123 {:a 1})]
+          m5 (new-lazymap 123 {:a 1})
+          m6 (new-lazymap 123 (delay {:a 1}))]
       (is (= (m1 :a) 11))
       (is (= (m1 :b) 22))
       (is (= (:b m1) 22))
@@ -47,4 +48,8 @@
       (is (thrown? Exception (m2 :a)))
       (is (thrown? Exception (:a m2)))
       (is (thrown? Exception (m3 :b)))
-      (is (thrown? Exception (:b m3))))))
+      (is (thrown? Exception (:b m3)))
+      (is (= (hash m6) 123))
+      (is (= (:a m6) 1))
+      (is (= (m6 :a) 1))
+      (is (= (hash m6) 123)))))

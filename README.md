@@ -4,17 +4,52 @@
 
 A Clojure library that provides some custom data structures that I found to be helpful.
 
-Sure, you can build your own data structures on top of maps etc., but in many cases that
-means you also have to provide custom functions like =, assoc, dissoc, merge etc.
+Sure, you can build your own data structures on top of maps, vectors etc., but in many cases that
+means you also have to provide custom functions like my=, my-assoc, my-dissoc, my-merge etc.
 
 The custom data structures here provide special features but still allow you to make use
 of Clojure's native functions (as long as this makes sense).
 
+
+## Data Types
+
+The following Data Types exist:
+
+* **relevancemap**:
+  A map that lets you define which of its properties should influence its hash value.
+
+* **transactionmap**:
+  A map that keeps track of changes and provides means by which you can commit or
+  roll back these changes.
+
+* **lazyvector**:
+  A vector that treats its contents lazily. It will only `deref` these contents when
+  necessary.
+
+* **lazymap**:
+  A map that treats its contents lazily. It will only `deref` its contents when necessary.
+
+* **dbmap**:
+  A map that combines **relevancemap**, **transactionmap** and **lazyvector** into one single
+  type that is suitable for representing database records. Additionally, it makes a distinction
+  between the entity's own properties vs. references to other entities.
+
+
+## Criticizm appreciated
+
+Some features of these custom datatypes may not (yet) be consistent with Clojure's paradigm of
+how it handles data types.
+
+However, I'll try to minimize the discrepancies, if there are any. I'll be very thankful for
+any kind of feedback, hints and tips for how to make this library better! If you find
+there are issues that should be improved, fixed or should not be done at all, just drop
+me a line - I appreciate that.
+
+
 ## Usage
 
-FIXME
+Still alpha! Examples will follow.
 
-Still alpha!
 
 ## License
 

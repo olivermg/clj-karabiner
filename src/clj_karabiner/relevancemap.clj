@@ -34,7 +34,7 @@
   (empty [this]
     (RelevanceMap. #{} {}))
   (equiv [this o]
-    (or (and (instance? RelevanceMap o)
+    (or (and (satisfies? Relevancable o)
              (.equiv (relevants this) (relevants o)))
         (and (instance? clojure.lang.IPersistentMap o)
              (.equiv (relevants this) o))))

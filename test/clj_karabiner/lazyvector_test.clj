@@ -27,7 +27,14 @@
 
 (deftest laziness-1
   (testing "laziness"
-    (let [v1 (new-lazyvector [1 (delay 2) 3])]
+    (let [cnt1 (atom 0)
+          v1 (new-lazyvector (delay (println "triggered lazy load")
+                                    (swap! cnt1 inc)
+                                    [1 2 3]))
+          v2 (new-lazyvector (delay (throw (ex-info "db error" {}))))]
       (is (= (v1 0) 1))
       (is (= (v1 1) 2))
-      (is (= (v1 2) 3)))))
+      (is (= (v1 2) 3))
+      (is (thrown? Exception (hash v2)))
+      (is (= @cnt1 1))
+      )))

@@ -83,7 +83,7 @@
 
 (defn new-dbmap
   ([content id-props]
-   (->DbMap (r/new-relevancemap (t/new-transactionmap (l/new-lazymap content)) id-props)))
+   (->DbMap (r/new-relevancemap (t/new-transactionmap content) id-props)))
 
   ([content]
    (new-dbmap content (set (keys content)))))

@@ -84,8 +84,11 @@
 
 
 (defn new-dbmap
-  ([content id-props]
-   (->DbMap (r/new-relevancemap (t/new-transactionmap content) id-props)))
+  ([commit-fn id-props content]
+   (->DbMap (r/new-relevancemap (t/new-transactionmap commit-fn content) id-props)))
+
+  ([commit-fn content]
+   (new-dbmap commit-fn (set (keys content)) content))
 
   ([content]
-   (new-dbmap content (set (keys content)))))
+   (new-dbmap nil content)))

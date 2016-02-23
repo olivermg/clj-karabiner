@@ -10,13 +10,13 @@
 
 (deftest references-1
   (testing "recognition of references"
-    (let [m1 (new-dbmap {:a 11 :b 22 :c [1 2 3]} #{:a :c})]
+    (let [m1 (new-dbmap nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})]
       (is (= (c/props m1) {:a 11 :b 22}))
       (is (= (c/refs m1) {:c [1 2 3]})))))
 
 (deftest relevance-1
   (testing "relevance properties"
-    (let [m1 (new-dbmap {:a 11 :b 22 :c [1 2 3]} #{:a :c})]
+    (let [m1 (new-dbmap nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})]
       (is (= (c/relevant-keys m1) #{:a :c}))
       (is (= (c/all m1) {:a 11 :b 22 :c [1 2 3]}))
       (is (= (c/relevants m1) {:a 11 :c [1 2 3]}))
@@ -24,7 +24,7 @@
 
 (deftest transactions-1
   (testing "transaction behavior"
-    (let [m1 (new-dbmap {:a 11 :b 22 :c [1 2 3]} #{:a :c})
+    (let [m1 (new-dbmap nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})
           m2 (assoc m1 :d 44)
           m3 (dissoc m2 :b)
           m4 (merge m3 {:c [2 3 4]})]
@@ -34,7 +34,7 @@
 
 (deftest all-1
   (testing "all features in combination"
-    (let [m1 (new-dbmap {:a 11 :b 22 :c [1 2 3] :d 44} #{:a :c})
+    (let [m1 (new-dbmap nil #{:a :c} {:a 11 :b 22 :c [1 2 3] :d 44})
           m2 (merge m1 {:b 33 :e 55})
           m3 (dissoc m2 :a)
           m4 (c/commit m3)
@@ -82,9 +82,10 @@
 (deftest use-case-2
   (testing "real world use case: create & persist & change new instance"
     (let [r11 {:r11 :r11}
-          m1 (new-dbmap {:p1 11 :p2 "22" :p3 :33
-                         :r1 [r11]}
-                        #{:p1 :r1})
+          m1 (new-dbmap nil
+                        #{:p1 :r1}
+                        {:p1 11 :p2 "22" :p3 :33
+                         :r1 [r11]})
           m2 (assoc m1 :p2 "222")
           m3 (assoc m2 :p1 111)
           m4 (merge m3 {:p4 444})

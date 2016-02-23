@@ -61,8 +61,10 @@
   java.util.Map
 
   r/Relevancable
+  (relevant-keys [this]
+    (r/relevant-keys trmap))
   (all [this]
-    trmap)
+    (r/all trmap))
   (relevants [this]
     (r/relevants trmap))
   (irrelevants [this]
@@ -74,9 +76,9 @@
   (changes [this]
     (t/changes (r/all trmap)))
   (commit [this]
-    (t/commit (r/all trmap)))
+    (DbMap. (r/->RelevanceMap (.relevant-keys this) (t/commit (r/all trmap)))))
   (revert [this]
-    (t/revert (r/all trmap)))
+    (DbMap. (r/->RelevanceMap (.relevant-keys this) (t/revert (r/all trmap)))))
 
   Referencable
   (props [this]

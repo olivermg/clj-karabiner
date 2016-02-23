@@ -21,6 +21,8 @@
 (deftest relevance-1
   (testing "relevance properties"
     (let [m1 (new-dbmap {:a 11 :b 22 :c [1 2 3]} #{:a :c})]
+      (is (= (r/relevant-keys m1) #{:a :c}))
+      (is (= (r/all m1) {:a 11 :b 22 :c [1 2 3]}))
       (is (= (r/relevants m1) {:a 11 :c [1 2 3]}))
       (is (= (r/irrelevants m1) {:b 22})))))
 
@@ -47,8 +49,16 @@
       (is (= (t/changes m3) {:added {:e 55}
                              :changed {:b 33}
                              :deleted {:a 11}}))
-      (is (= m4 {:b 33 :c [1 2 3] :d 44 :e 55}))
-      (is (= m5 {:a 11 :b 22 :c [1 2 3] :d 44})))))
+      (is (= (r/all m4) {:b 33 :c [1 2 3] :d 44 :e 55}))
+      (is (= (r/all m5) {:a 11 :b 22 :c [1 2 3] :d 44}))
+      (is (r/=* m4 {:b 33 :c [1 2 3] :d 44 :e 55}))
+      (is (r/=* m5 {:a 11 :b 22 :c [1 2 3] :d 44}))
+      (is (= (r/relevants m4) {:c [1 2 3]}))
+      (is (= (r/relevants m5) {:a 11 :c [1 2 3]}))
+      (is (= m4 {:c [1 2 3]}))
+      (is (= m5 {:a 11 :c [1 2 3]}))
+      (is (= (r/irrelevants m4) {:b 33 :d 44 :e 55}))
+      (is (= (r/irrelevants m5) {:b 22 :d 44})))))
 
 (deftest use-case-1
   (testing "real world use case: create & persist new instance"
@@ -80,13 +90,34 @@
                          :r1 [r11]}
                         #{:p1 :r1})
           m2 (assoc m1 :p2 "222")
-          m3 (assoc m2 :p1 111)]
+          m3 (assoc m2 :p1 111)
+          m4 (merge m3 {:p4 444})
+          m5 (dissoc m4 :p3)
+          m6 (t/commit m5)]
       (is (= (t/changes m1) {:added {}
                              :changed {}
                              :deleted {}}))
+      (is (= (t/changes m2) {:added {}
+                             :changed {:p2 "222"}
+                             :deleted {}}))
+      (is (= (t/changes m3) {:added {}
+                             :changed {:p1 111 :p2 "222"}
+                             :deleted {}}))
+      (is (= (t/changes m4) {:added {:p4 444}
+                             :changed {:p1 111 :p2 "222"}
+                             :deleted {}}))
+      (is (= (t/changes m5) {:added {:p4 444}
+                             :changed {:p1 111 :p2 "222"}
+                             :deleted {:p3 :33}}))
+      (is (= (t/changes m6) {:added {}
+                             :changed {}
+                             :deleted {}}))
       (is (= m1 m2))
+      (is (= m3 m4 m5))
       (is (not (r/=* m1 m2)))
-      ;; TODO: wip
+      (is (not= m1 m3))
+      (is (not (r/=* m1 m3)))
+      (is (= m6 {:p1 111 :r1 [r11]}))
       )))
 
 (deftest use-case-2-error

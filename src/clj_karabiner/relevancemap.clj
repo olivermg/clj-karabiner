@@ -2,6 +2,7 @@
 
 
 (defprotocol Relevancable
+  (relevant-keys [this])
   (all [this])
   (relevants [this])
   (irrelevants [this])
@@ -62,6 +63,8 @@
   java.util.Map
 
   Relevancable
+  (relevant-keys [this]
+    hashkeys)
   (all [this]
     contents)
   (relevants [this]

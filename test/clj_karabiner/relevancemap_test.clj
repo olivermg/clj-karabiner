@@ -5,6 +5,8 @@
 (deftest relevants-1
   (testing "should distinguish between relevant & irrelevant properties"
     (let [m1 (new-relevancemap {:a 11 :b 22 :c 33} #{:a :c})]
+      (is (= (relevant-keys m1) #{:a :c}))
+      (is (= (all m1) {:a 11 :b 22 :c 33}))
       (is (= (relevants m1) {:a 11 :c 33}))
       (is (= (irrelevants m1) {:b 22})))))
 

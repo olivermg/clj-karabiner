@@ -26,12 +26,16 @@
     (let [m1 (new-relevancemap {:a 11 :b 22 :c 33} #{:a})
           m2 (new-relevancemap {:a 11 :b 22 :c 33} #{:a})
           m3 (new-relevancemap {:a 11 :b 22 :c 33} #{:a :b})
-          m4 (new-relevancemap {:a 11 :b 22 :c 44} #{:a})
+          m4 (new-relevancemap {:a 11 :b 33 :c 44} #{:a})
           m5 (new-relevancemap {:a 22 :b 22 :c 33} #{:a})]
       (is (= m1 m2))
+      (is (=* m1 m2))
       (is (not= m1 m3))
+      (is (=* m1 m3))
       (is (= m1 m4))
-      (is (not= m1 m5)))))
+      (is (not (=* m1 m4)))
+      (is (not= m1 m5))
+      (is (not (=* m1 m5))))))
 
 (deftest equality-2
   (testing "equality with maps"
@@ -41,6 +45,10 @@
           m4 {:a 11 :b 22 :c 44}
           m5 {:a 11       :c 44}]
       (is (not= m1 m2))
+      (is (=* m1 m2))
       (is (= m1 m3))
+      (is (not (=* m1 m3)))
       (is (not= m1 m4))
-      (is (not= m1 m5)))))
+      (is (not (=* m1 m4)))
+      (is (not= m1 m5))
+      (is (not (=* m1 m5))))))

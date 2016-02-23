@@ -3,7 +3,8 @@
 
 (defprotocol Relevancable
   (relevants [this])
-  (irrelevants [this]))
+  (irrelevants [this])
+  (=* [this other]))
 
 
 (deftype RelevanceMap [hashkeys contents]
@@ -65,7 +66,11 @@
                      contents)))
   (irrelevants [this]
     (into {} (remove #(contains? hashkeys (first %))
-                     contents))))
+                     contents)))
+  (=* [this o]
+    (or (and (satisfies? Relevancable o)
+             (= contents (.-contents o)))
+        (= contents o))))
 
 (defn new-relevancemap
   ([data relevant-keys]

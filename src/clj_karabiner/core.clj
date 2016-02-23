@@ -20,3 +20,13 @@
 
 (defprotocol Typable
   (typeof [this]))
+
+
+
+(defprotocol Dbable
+  (typeof* [this])
+  (id-props* [this])
+  (id-vals* [this])
+  (id* [this])
+  (props* [this])
+  (refs* [this]))

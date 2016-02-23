@@ -85,6 +85,7 @@
                              :changed {}
                              :deleted {}}))
       (is (= m1 m2))
+      (is (not (r/=* m1 m2)))
       ;; TODO: wip
       )))
 

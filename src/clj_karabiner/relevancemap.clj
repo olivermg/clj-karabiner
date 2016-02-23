@@ -2,6 +2,7 @@
 
 
 (defprotocol Relevancable
+  (all [this])
   (relevants [this])
   (irrelevants [this])
   (=* [this other]))
@@ -61,6 +62,8 @@
   java.util.Map
 
   Relevancable
+  (all [this]
+    contents)
   (relevants [this]
     (into {} (filter #(contains? hashkeys (first %))
                      contents)))
@@ -69,7 +72,7 @@
                      contents)))
   (=* [this o]
     (or (and (satisfies? Relevancable o)
-             (= contents (.-contents o)))
+             (= contents (all o)))
         (= contents o))))
 
 (defn new-relevancemap

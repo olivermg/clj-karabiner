@@ -61,18 +61,22 @@
   java.util.Map
 
   r/Relevancable
+  (all [this]
+    trmap)
   (relevants [this]
     (r/relevants trmap))
   (irrelevants [this]
     (r/irrelevants trmap))
+  (=* [this o]
+    (r/=* trmap o))
 
   t/Transactionable
   (changes [this]
-    (t/changes (.-contents trmap)))
+    (t/changes (r/all trmap)))
   (commit [this]
-    (t/commit (.-contents trmap)))
+    (t/commit (r/all trmap)))
   (revert [this]
-    (t/revert (.-contents trmap)))
+    (t/revert (r/all trmap)))
 
   Referencable
   (props [this]

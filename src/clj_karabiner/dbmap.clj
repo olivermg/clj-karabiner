@@ -5,15 +5,15 @@
             [clj-karabiner.core :as c]))
 
 
-(deftype DbMap [trmap]
+(deftype DbMap [trmap typ]
 
   clojure.lang.IPersistentMap
   (assoc [this key val]
-    (DbMap. (.assoc trmap key val)))
+    (DbMap. (.assoc trmap key val) typ))
   (assocEx [this key val]
-    (DbMap. (.assoc trmap key val)))
+    (DbMap. (.assoc trmap key val) typ))
   (without [this key]
-    (DbMap. (.without trmap key)))
+    (DbMap. (.without trmap key) typ))
 
   java.lang.Iterable
   (iterator [this]
@@ -29,11 +29,13 @@
   (count [this]
     (.count trmap))
   (cons [this o]
-    (DbMap. (.cons trmap o)))
+    (DbMap. (.cons trmap o) typ))
   (empty [this]
-    (DbMap. {}))
+    (DbMap. {} typ))
   (equiv [this o]
-    (and (instance? clojure.lang.IPersistentMap o)
+    (and (or (not (satisfies? c/Typable o))
+             (= typ (c/typeof o)))
+         (instance? clojure.lang.IPersistentMap o)
          (.equiv trmap o)))
 
   clojure.lang.Seqable
@@ -72,23 +74,27 @@
   (changes [this]
     (c/changes (c/all trmap)))
   (commit [this]
-    (DbMap. (r/->RelevanceMap (.relevant-keys this) (c/commit (c/all trmap)))))
+    (DbMap. (r/->RelevanceMap (.relevant-keys this) (c/commit (c/all trmap))) typ))
   (revert [this]
-    (DbMap. (r/->RelevanceMap (.relevant-keys this) (c/revert (c/all trmap)))))
+    (DbMap. (r/->RelevanceMap (.relevant-keys this) (c/revert (c/all trmap))) typ))
 
   c/Referencable
   (props [this]
     (into (.empty this) (remove #(sequential? (second %)) trmap)))
   (refs [this]
-    (into (.empty this) (filter #(sequential? (second %)) trmap))))
+    (into (.empty this) (filter #(sequential? (second %)) trmap)))
+
+  c/Typable
+  (typeof [this]
+    typ))
 
 
 (defn new-dbmap
-  ([commit-fn id-props content]
-   (->DbMap (r/new-relevancemap (t/new-transactionmap commit-fn content) id-props)))
+  ([typ commit-fn id-props content]
+   (->DbMap (r/new-relevancemap (t/new-transactionmap commit-fn content) id-props) typ))
 
-  ([commit-fn content]
-   (new-dbmap commit-fn (set (keys content)) content))
+  ([typ commit-fn content]
+   (new-dbmap typ commit-fn (set (keys content)) content))
 
-  ([content]
-   (new-dbmap nil content)))
+  ([typ content]
+   (new-dbmap typ nil content)))

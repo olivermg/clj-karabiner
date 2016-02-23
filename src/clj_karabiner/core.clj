@@ -17,3 +17,6 @@
 (defprotocol Referencable
   (props [this])
   (refs [this]))
+
+(defprotocol Typable
+  (typeof [this]))

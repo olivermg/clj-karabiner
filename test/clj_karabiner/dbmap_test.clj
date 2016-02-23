@@ -10,13 +10,13 @@
 
 (deftest references-1
   (testing "recognition of references"
-    (let [m1 (new-dbmap nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})]
+    (let [m1 (new-dbmap :typ1 nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})]
       (is (= (c/props m1) {:a 11 :b 22}))
       (is (= (c/refs m1) {:c [1 2 3]})))))
 
 (deftest relevance-1
   (testing "relevance properties"
-    (let [m1 (new-dbmap nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})]
+    (let [m1 (new-dbmap :typ1 nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})]
       (is (= (c/relevant-keys m1) #{:a :c}))
       (is (= (c/all m1) {:a 11 :b 22 :c [1 2 3]}))
       (is (= (c/relevants m1) {:a 11 :c [1 2 3]}))
@@ -24,7 +24,7 @@
 
 (deftest transactions-1
   (testing "transaction behavior"
-    (let [m1 (new-dbmap nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})
+    (let [m1 (new-dbmap :typ1 nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})
           m2 (assoc m1 :d 44)
           m3 (dissoc m2 :b)
           m4 (merge m3 {:c [2 3 4]})]
@@ -32,9 +32,23 @@
                              :changed {:c [2 3 4]}
                              :deleted {:b 22}})))))
 
+(deftest type-1
+  (testing "type handling"
+    (let [m1 (new-dbmap :typ1 nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})
+          m2 (new-dbmap :typ1 nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})
+          m3 (new-dbmap :typ2 nil #{:a :c} {:a 11 :b 22 :c [1 2 3]})
+          m4 (assoc m1 :x 111)]
+      (is (= (c/typeof m1) :typ1))
+      (is (= (c/typeof m2) :typ1))
+      (is (= (c/typeof m3) :typ2))
+      (is (= m1 m2))
+      (is (not= m1 m3))
+      (is (= (c/typeof m4) :typ1))
+      (is (not (c/=* m1 m4))))))
+
 (deftest all-1
   (testing "all features in combination"
-    (let [m1 (new-dbmap nil #{:a :c} {:a 11 :b 22 :c [1 2 3] :d 44})
+    (let [m1 (new-dbmap :typ1 nil #{:a :c} {:a 11 :b 22 :c [1 2 3] :d 44})
           m2 (merge m1 {:b 33 :e 55})
           m3 (dissoc m2 :a)
           m4 (c/commit m3)
@@ -67,8 +81,8 @@
                                      {:r13 :r13}) ;; this would lazily load stuff from the db
                               )
 
-          m (new-dbmap {:p1 11 :p2 "22" :p3 :33
-                        :r1 [r11 r12 r13]})]
+          m (new-dbmap :typ1 {:p1 11 :p2 "22" :p3 :33
+                              :r1 [r11 r12 r13]})]
       (is (= (c/props m) {:p1 11 :p2 "22" :p3 :33}))
       (is (= (:p1 m) 11))
       (is (= (m :p2) "22"))
@@ -82,7 +96,8 @@
 (deftest use-case-2
   (testing "real world use case: create & persist & change new instance"
     (let [r11 {:r11 :r11}
-          m1 (new-dbmap nil
+          m1 (new-dbmap :typ1
+                        nil
                         #{:p1 :r1}
                         {:p1 11 :p2 "22" :p3 :33
                          :r1 [r11]})
@@ -122,8 +137,8 @@
   (testing "real world use case error on lazy access"
     (let [r1 (lv/new-lazyvector (delay [1 2 3])) ;; simulating lazy loading
           r2 (lv/new-lazyvector (delay (throw (ex-info "db error" {})))) ;; simulating error on lazy loading
-          m1 (new-dbmap {:p1 11 :p2 "22" :p3 :33
-                         :r1 r1 :r2 r2})]
+          m1 (new-dbmap :typ1 {:p1 11 :p2 "22" :p3 :33
+                               :r1 r1 :r2 r2})]
       (is (= (c/props m1) {:p1 11 :p2 "22" :p3 :33}))
       (is (= ((c/refs m1) :r1) [1 2 3]))
       (is (thrown? Exception (hash ((c/refs m1) :r2)))) ;; accessing anything within r2 triggers lazy loading

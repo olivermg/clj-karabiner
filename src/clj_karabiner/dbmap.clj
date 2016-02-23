@@ -1,12 +1,8 @@
 (ns clj-karabiner.dbmap
   (:require [clj-karabiner.lazymap :as l]
             [clj-karabiner.relevancemap :as r]
-            [clj-karabiner.transactionmap :as t]))
-
-
-(defprotocol Referencable
-  (props [this])
-  (refs [this]))
+            [clj-karabiner.transactionmap :as t]
+            [clj-karabiner.core :as c]))
 
 
 (deftype DbMap [trmap]
@@ -60,27 +56,27 @@
 
   java.util.Map
 
-  r/Relevancable
+  c/Relevancable
   (relevant-keys [this]
-    (r/relevant-keys trmap))
+    (c/relevant-keys trmap))
   (all [this]
-    (r/all trmap))
+    (c/all trmap))
   (relevants [this]
-    (r/relevants trmap))
+    (c/relevants trmap))
   (irrelevants [this]
-    (r/irrelevants trmap))
+    (c/irrelevants trmap))
   (=* [this o]
-    (r/=* trmap o))
+    (c/=* trmap o))
 
-  t/Transactionable
+  c/Transactionable
   (changes [this]
-    (t/changes (r/all trmap)))
+    (c/changes (c/all trmap)))
   (commit [this]
-    (DbMap. (r/->RelevanceMap (.relevant-keys this) (t/commit (r/all trmap)))))
+    (DbMap. (r/->RelevanceMap (.relevant-keys this) (c/commit (c/all trmap)))))
   (revert [this]
-    (DbMap. (r/->RelevanceMap (.relevant-keys this) (t/revert (r/all trmap)))))
+    (DbMap. (r/->RelevanceMap (.relevant-keys this) (c/revert (c/all trmap)))))
 
-  Referencable
+  c/Referencable
   (props [this]
     (into (.empty this) (remove #(sequential? (second %)) trmap)))
   (refs [this]

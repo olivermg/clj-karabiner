@@ -1,12 +1,5 @@
-(ns clj-karabiner.relevancemap)
-
-
-(defprotocol Relevancable
-  (relevant-keys [this])
-  (all [this])
-  (relevants [this])
-  (irrelevants [this])
-  (=* [this other]))
+(ns clj-karabiner.relevancemap
+  (:require [clj-karabiner.core :as c]))
 
 
 (deftype RelevanceMap [hashkeys contents]
@@ -37,10 +30,10 @@
   (empty [this]
     (RelevanceMap. #{} {}))
   (equiv [this o]
-    (or (and (satisfies? Relevancable o)
-             (.equiv (relevants this) (relevants o)))
+    (or (and (satisfies? c/Relevancable o)
+             (.equiv (c/relevants this) (c/relevants o)))
         (and (instance? clojure.lang.IPersistentMap o)
-             (.equiv (relevants this) o))))
+             (.equiv (c/relevants this) o))))
 
   clojure.lang.Seqable
   (seq [this]
@@ -58,11 +51,11 @@
 
   java.lang.Object
   (hashCode [this]
-    (.hashCode (relevants this)))
+    (.hashCode (c/relevants this)))
 
   java.util.Map
 
-  Relevancable
+  c/Relevancable
   (relevant-keys [this]
     hashkeys)
   (all [this]
@@ -74,9 +67,10 @@
     (into {} (remove #(contains? hashkeys (first %))
                      contents)))
   (=* [this o]
-    (or (and (satisfies? Relevancable o)
-             (= contents (all o)))
+    (or (and (satisfies? c/Relevancable o)
+             (= contents (c/all o)))
         (= contents o))))
+
 
 (defn new-relevancemap
   ([data relevant-keys]

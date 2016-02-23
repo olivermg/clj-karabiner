@@ -1,11 +1,6 @@
 (ns clj-karabiner.transactionmap
-  (:require [clojure.data :as d]))
-
-
-(defprotocol Transactionable
-  (changes [this])
-  (revert [this])
-  (commit [this]))
+  (:require [clojure.data :as d]
+            [clj-karabiner.core :as c]))
 
 
 (deftype TransactionMap [original contents]
@@ -59,7 +54,7 @@
 
   java.util.Map
 
-  Transactionable
+  c/Transactionable
   (changes [this]
     (let [df (d/diff original contents)]
       {:added (into {} (remove #(contains? (first df) (first %)) (second df)))

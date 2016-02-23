@@ -118,6 +118,7 @@
       (is (not= m1 m3))
       (is (not (r/=* m1 m3)))
       (is (= m6 {:p1 111 :r1 [r11]}))
+      (is (r/=* m6 {:p1 111 :p2 "222" :p4 444 :r1 [r11]}))
       )))
 
 (deftest use-case-2-error

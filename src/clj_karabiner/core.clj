@@ -7,10 +7,12 @@
 
 (defprotocol Relevancable
   (relevant-keys [this])
-  (all [this])
   (relevants [this])
   (irrelevants [this])
-  (=* [this other]))
+  ;; as we will usually alter the behavior of =, hash etc., we should provide
+  ;; functions that provide that "old" behavior:
+  (=* [this other])
+  (all [this]))
 
 (defprotocol Referencable
   (props [this])

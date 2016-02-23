@@ -3,15 +3,15 @@
             [clj-karabiner.core :as c]))
 
 
-(deftype TransactionMap [original contents]
+(deftype TransactionMap [original contents commit-fn]
 
   clojure.lang.IPersistentMap
   (assoc [this key val]
-    (TransactionMap. original (.assoc contents key val)))
+    (TransactionMap. original (.assoc contents key val) commit-fn))
   (assocEx [this key val]
-    (TransactionMap. original (.assoc contents key val)))
+    (TransactionMap. original (.assoc contents key val) commit-fn))
   (without [this key]
-    (TransactionMap. original (.without contents key)))
+    (TransactionMap. original (.without contents key) commit-fn))
 
   java.lang.Iterable
   (iterator [this]
@@ -27,9 +27,9 @@
   (count [this]
     (.count contents))
   (cons [this o]
-    (TransactionMap. original (.cons contents o)))
+    (TransactionMap. original (.cons contents o) commit-fn))
   (empty [this]
-    (TransactionMap. {} {}))
+    (TransactionMap. {} {} commit-fn))
   (equiv [this o]
     (and (instance? clojure.lang.IPersistentMap o)
          (.equiv contents o)))
@@ -61,11 +61,16 @@
        :changed (into {} (filter #(contains? (first df) (first %)) (second df)))
        :deleted (into {} (remove #(contains? (second df) (first %)) (first df)))}))
   (revert [this]
-    (TransactionMap. original original))
+    (TransactionMap. original original commit-fn))
   (commit [this]
-    (TransactionMap. contents contents)))
+    (when commit-fn
+     (commit-fn original contents (.changes this)))
+    (TransactionMap. contents contents commit-fn)))
 
 
 (defn new-transactionmap
-  [contents]
-  (->TransactionMap contents contents))
+  ([commit-fn contents]
+   (->TransactionMap contents contents commit-fn))
+
+  ([contents]
+  (new-transactionmap nil contents)))

@@ -74,7 +74,8 @@
                                (-> (ins this nk n1)
                                    (ins childk n2)))]
         (if (>= (-> nn :size) b)
-          (concat (split nn) [nlnbs])
+          (let [[n1 nk n2] (split nn)]
+            [n1 nk n2 nlnbs])
           [nn nil nil nlnbs]))))
 
   B+TreeLookupable
@@ -145,7 +146,8 @@
 
       (let [nn (ins k v)]
         (if (>= (-> nn :size) b)
-          (split nn)
+          (let [[n1 nk n2 nlnbs] (split nn)]
+            [n1 nk n2 nlnbs])
           [nn nil nil (insert-leaf-neighbours nn)]))))
 
   B+TreeLookupable

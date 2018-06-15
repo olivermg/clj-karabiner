@@ -97,10 +97,10 @@
   t/StorageBacked
 
   (load [this]
-    )
+    this)
 
   (save [this]
-    ))
+    this))
 
 
 (defrecord B+TreeLeafNode [b size m]
@@ -184,10 +184,10 @@
   t/StorageBacked
 
   (load [this]
-    )
+    this)
 
   (save [this]
-    ))
+    this))
 
 
 (defn lookup* [node lookup-fn]

@@ -1,4 +1,10 @@
-(ns clj-karabiner.tree)
+(ns clj-karabiner.tree
+  (:refer-clojure :rename {load load-clj}))
+
+
+(defprotocol StorageBacked
+  (load [this])
+  (save [this]))
 
 
 (defprotocol TreeModifyable
@@ -7,7 +13,6 @@
 (defprotocol TreeLookupable
   (lookup [this k])
   (lookup-range* [this k]))
-
 
 (defn lookup-range
   ([this k] (lookup-range* this k))

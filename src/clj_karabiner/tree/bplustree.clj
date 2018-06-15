@@ -1,9 +1,6 @@
 (ns clj-karabiner.tree.bplustree
   (:refer-clojure :rename {iterate iterate-clj})
   (:require [clj-karabiner.tree :as t]
-            #_[sample.rangemap :as rm]
-            #_[sample.partiallycomparablekey :as pck]
-            #_[sample.memoryfactstore :as mfs]
             #_[clojure.tools.logging :as log]))
 
 
@@ -24,6 +21,7 @@
   (iterate-leafnodes [this]))
 
 
+;;; TODO: wrap this into a protocol/record, so one can implement custom compare logics:
 (defn- cmp-keys [k1 k2]
   (if (or (not (sequential? k1))
           (not (sequential? k2)))
@@ -94,7 +92,15 @@
   B+TreeLeafNodeIterable
 
   (iterate-leafnodes [this]
-    (lazy-seq (mapcat iterate-leafnodes vs))))
+    (lazy-seq (mapcat iterate-leafnodes vs)))
+
+  t/StorageBacked
+
+  (load [this]
+    )
+
+  (save [this]
+    ))
 
 
 (defrecord B+TreeLeafNode [b size m]
@@ -173,7 +179,15 @@
   B+TreeLeafNodeIterable
 
   (iterate-leafnodes [this]
-    [this]))
+    [this])
+
+  t/StorageBacked
+
+  (load [this]
+    )
+
+  (save [this]
+    ))
 
 
 (defn lookup* [node lookup-fn]

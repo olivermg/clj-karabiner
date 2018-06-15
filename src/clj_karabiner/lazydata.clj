@@ -8,7 +8,7 @@
 
 #_(defrecord Node [k l r])
 
-(defrecord LazyData [realize!-fn realized? data]
+(deftype LazyData [realize!-fn realized? data]
 
   clojure.lang.IDeref
 
@@ -24,7 +24,7 @@
   (isRealized [this]
     @realized?))
 
-(defmethod print-method LazyData [o w]
+#_(defmethod print-method LazyData [o w]
   ((get-method print-method clojure.lang.IRecord) o w))
 
 

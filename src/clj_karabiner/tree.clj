@@ -2,7 +2,7 @@
   (:refer-clojure :rename {load load-clj}))
 
 
-(defprotocol StorageBackend
+(defprotocol ExternalStorage
   (load-data [this k])
   (save-data [this k data]))
 
@@ -12,12 +12,18 @@
 
 
 (defprotocol TreeModifyable
-  (insert [this k v]))
+  (insert* [this k v user-data]))
+
+(defn insert [this k v]
+  (insert* this k v nil))
+
 
 (defprotocol TreeLookupable
-  (lookup [this k])
-  (lookup-range* [this k]))
+  (lookup* [this k user-data])
+  (lookup-range* [this k user-data]))
 
-(defn lookup-range
-  ([this k] (lookup-range* this k))
-  ([this]   (lookup-range* this nil)))
+(defn lookup [this k]
+  (lookup* this k nil))
+
+(defn lookup-range [this k]
+  (lookup-range* this k nil))

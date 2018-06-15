@@ -10,10 +10,10 @@
     m))
 
 
-(defprotocol B+TreeModifyable
+#_(defprotocol B+TreeModifyable
   (insert [this k v leaf-neighbours]))
 
-(defprotocol B+TreeLookupable
+#_(defprotocol B+TreeLookupable
   (lookup [this k])
   (lookup-range [this k klen leaf-neighbours]))
 
@@ -38,9 +38,9 @@
 
 (defrecord B+TreeInternalNode [b size ks vs]
 
-  B+TreeModifyable
+  t/TreeModifyable
 
-  (insert [this k v leaf-neighbours]
+  (insert* [this k v user-data]
     (letfn [(split [{:keys [b ks vs size] :as n}]
               (let [partition-size  (-> size (/ 2) Math/ceil int)
                     [ks1 ks2]       (partition-all partition-size ks)
@@ -65,8 +65,8 @@
                 (let [nvs (-> vs butlast (concat [v]))]
                   (->B+TreeInternalNode b size ks nvs))))]
 
-      (let [[childk childv]  (lookup this k)
-            [n1 nk n2 nlnbs] (insert childv k v leaf-neighbours)
+      (let [[childk childv]  (t/lookup* this k user-data)
+            [n1 nk n2 nlnbs] (t/insert* childv k v user-data)
             nn               (if (nil? n2)
                                (ins this childk n1)
                                (-> (ins this nk n1)
@@ -76,9 +76,9 @@
             [n1 nk n2 nlnbs])
           [nn nil nil nlnbs]))))
 
-  B+TreeLookupable
+  t/TreeLookupable
 
-  (lookup [this k]
+  (lookup* [this k user-data]
     (loop [[k* & ks*] ks
            [v* & vs*] vs]
       (cond
@@ -86,8 +86,8 @@
         (<= (cmp-keys k k*) 0) [k* v*]
         true                   (recur ks* vs*))))
 
-  (lookup-range [this k _ _]
-    (lookup this k))
+  (lookup-range* [this k user-data]
+    (t/lookup* this k user-data))
 
   B+TreeLeafNodeIterable
 
@@ -105,9 +105,9 @@
 
 (defrecord B+TreeLeafNode [b size m]
 
-  B+TreeModifyable
+  t/TreeModifyable
 
-  (insert [this k v leaf-neighbours]
+  (insert* [this k v {:keys [leaf-neighbours] :as user-data}]
     (letfn [(insert-leaf-neighbours [n1]
               (let [{pleaf :prev nleaf :next} (get leaf-neighbours this)
                     {ppleaf :prev}            (when-not (nil? pleaf)
@@ -156,12 +156,12 @@
             [n1 nk n2 nlnbs])
           [nn nil nil (insert-leaf-neighbours nn)]))))
 
-  B+TreeLookupable
+  t/TreeLookupable
 
-  (lookup [this k]
+  (lookup* [this k user-data]
     [k (get m k)])
 
-  (lookup-range [this k klen leaf-neighbours]
+  (lookup-range* [this k {:keys [leaf-neighbours] :as user-data}]
     (when (>= (cmp-keys k (-> m keys first)) 0)
       (let [matching-keys (->> (keys m)
                                (filter #(= (cmp-keys % k) 0)))]
@@ -174,7 +174,7 @@
                         vals
                         vec)
                     (when-let [next (-> (get leaf-neighbours this) :next)]
-                      (second (lookup-range next k klen leaf-neighbours)))))])))
+                      (second (t/lookup-range* next k user-data)))))])))
 
   B+TreeLeafNodeIterable
 
@@ -190,9 +190,9 @@
     this))
 
 
-(defn lookup* [node lookup-fn]
+(defn lookup-sub [node lookup-fn]
   (loop [[_ v] (lookup-fn node)]
-    (if (satisfies? B+TreeLookupable v)
+    (if (satisfies? t/TreeLookupable v)
       (recur (lookup-fn v))
       v)))
 
@@ -200,8 +200,8 @@
 
   t/TreeModifyable
 
-  (insert [this k v]
-    (let [[n1 k n2 nlnbs] (insert root k v leaf-neighbours)
+  (insert* [this k v _]
+    (let [[n1 k n2 nlnbs] (t/insert* root k v {:leaf-neighbours leaf-neighbours})
           nroot (if (nil? n2)
                   n1
                   (->B+TreeInternalNode b 1 [k] [n1 n2]))]
@@ -209,11 +209,11 @@
 
   t/TreeLookupable
 
-  (lookup [this k]
-    (lookup* root #(lookup % k)))
+  (lookup* [this k _]
+    (lookup-sub root #(t/lookup* % k {:leaf-neighbours leaf-neighbours})))
 
-  (lookup-range* [this k]
-    (lookup* root #(lookup-range % (or k []) (count k) leaf-neighbours)))
+  (lookup-range* [this k _]
+    (lookup-sub root #(t/lookup-range* % (or k []) {:leaf-neighbours leaf-neighbours})))
 
   B+TreeLeafNodeIterable
 

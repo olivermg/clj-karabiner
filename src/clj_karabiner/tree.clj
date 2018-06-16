@@ -2,15 +2,6 @@
   (:refer-clojure :rename {load load-clj}))
 
 
-(defprotocol ExternalStorage
-  (load-data [this k])
-  (save-data [this k data]))
-
-(defprotocol StorageBacked
-  (load [this])
-  (save [this]))
-
-
 (defprotocol TreeModifyable
   (insert* [this k v user-data]))
 

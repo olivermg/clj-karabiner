@@ -270,3 +270,25 @@
   #_(clojure.pprint/pprint t2)
   [(time (t/lookup-range t1 [:b "y"]))
    (time (t/lookup-range t2 [:b "y"]))])
+
+
+
+;;;
+;;; dummy serialization via transit
+;;;
+
+#_(let [out (java.io.ByteArrayOutputStream.)
+            writer (tr/writer out :json {:handlers {Foo (reify com.cognitect.transit.WriteHandler
+                                                          (tag [_ o] "Foo")
+                                                          (rep [_ o] {:a (:a o)})
+                                                          (stringRep [_ _ ] nil)
+                                                          (getVerboseHandler [_] nil))}})]
+        (tr/write writer {:a 11})
+        (tr/write writer [11 22 33])
+        (tr/write writer (->Foo 22 33))
+        (println (.toString out))
+        (let [in (java.io.ByteArrayInputStream. (.toByteArray out))
+              reader (tr/reader in :json {:handlers {"Foo" (reify com.cognitect.transit.ReadHandler
+                                                            (fromRep [_ rep]
+                                                              (->Foo (:a rep) :xxx)))}})]
+          [(tr/read reader) (tr/read reader) (tr/read reader)]))

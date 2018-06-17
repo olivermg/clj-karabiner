@@ -2,7 +2,7 @@
   (:require [clj-karabiner.external-storage :as es]))
 
 
-(defrecord MemoryBackend [storage]
+(defrecord MemoryStorage [storage]
 
   es/ExternalStorage
 
@@ -13,5 +13,5 @@
     (swap! storage #(assoc % k data))))
 
 
-(defn memory-backend []
-  (->MemoryBackend (atom {})))
+(defn memory-storage []
+  (->MemoryStorage (atom {})))

@@ -3,7 +3,7 @@
             [clj-karabiner.external-storage :as es]))
 
 
-(defrecord StoredNode [storage-key storage-backend]
+(defrecord StoredNode [storage key-fn]
 
   t/TreeModifyable
 
@@ -21,7 +21,7 @@
   es/StorageBacked
 
   (load [this]
-    (t/load-data storage-backend storage-key))
+    (t/load-data storage (key-fn this)))
 
   (save [this]
     this))

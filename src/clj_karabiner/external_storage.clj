@@ -8,4 +8,5 @@
 
 (defprotocol StorageBacked
   (load [this])
-  (save [this]))
+  (save [this])
+  (saved-representation [this]))

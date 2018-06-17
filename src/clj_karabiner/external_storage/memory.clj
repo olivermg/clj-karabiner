@@ -10,18 +10,17 @@
     (es/load-data storage key)))
 
 
-(defrecord MemoryStorage [storage]
+(defrecord MemoryStorage [memory]
 
   es/ExternalStorage
 
   (load-data [this k]
-    (get @storage k))
+    (get @memory k))
 
   (save-data [this o]
     (let [k (es/key o)
           d (es/data o)]
-      (swap! storage #(assoc % k d))
-      (->MemoryData this k))))
+      (swap! memory #(assoc % k d)))))
 
 
 (defn memory-storage []

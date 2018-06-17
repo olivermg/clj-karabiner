@@ -13,7 +13,9 @@
   #_(saved-representation [this])
 
   (key [this])
-  (data [this]))
+  (data [this])
+  (loaded-representation [this])
+  (saved-representation [this]))
 
 (defprotocol StoredData
   (load [this]))

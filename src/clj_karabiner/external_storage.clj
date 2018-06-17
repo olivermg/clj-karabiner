@@ -1,12 +1,19 @@
 (ns clj-karabiner.external-storage
-  (:refer-clojure :rename {load load-clj}))
+  (:refer-clojure :rename {load load-clj
+                           key key-clj}))
 
 
 (defprotocol ExternalStorage
   (load-data [this k])
-  (save-data [this k data]))
+  (save-data [this o]))
 
 (defprotocol StorageBacked
-  (load [this])
-  (save [this])
-  (saved-representation [this]))
+  #_(load [this])
+  #_(save [this])
+  #_(saved-representation [this])
+
+  (key [this])
+  (data [this]))
+
+(defprotocol StoredData
+  (load [this]))

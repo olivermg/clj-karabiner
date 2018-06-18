@@ -113,8 +113,7 @@
     (str "b+internal:" (hash this))))
 
 
-(defrecord B+TreeLeafNode [b size m
-                           storage]
+(defrecord B+TreeLeafNode [b size m]
 
   t/TreeModifyable
 
@@ -151,15 +150,15 @@
                     m2 (apply dissoc m ks1)
                     n1size partition-size
                     n2size (- partition-size (rem size 2))
-                    n1 (->B+TreeLeafNode b n1size m1 storage)
-                    n2 (->B+TreeLeafNode b n2size m2 storage)
+                    n1 (->B+TreeLeafNode b n1size m1)
+                    n2 (->B+TreeLeafNode b n2size m2)
                     nleafnbs (update-leaf-neighbours n1 n2)]
                 [n1 (last ks1) n2 nleafnbs]))
 
             (ins [k v]
               (let [nsize (if (contains? m k) size (inc size))
                     nm (assoc m k v)]
-                (->B+TreeLeafNode b nsize nm storage)))]
+                (->B+TreeLeafNode b nsize nm)))]
 
       (let [nn (ins k v)]
         (if (>= (-> nn :size) b)
@@ -213,8 +212,7 @@
       (recur (lookup-fn v))
       v)))
 
-(defrecord B+Tree [b root leaf-neighbours
-                   storage]
+(defrecord B+Tree [b root leaf-neighbours]
 
   t/TreeModifyable
 
@@ -222,8 +220,8 @@
     (let [[n1 k n2 nlnbs] (t/insert* root k v {:leaf-neighbours leaf-neighbours})
           nroot (if (nil? n2)
                   n1
-                  (->B+TreeInternalNode b 1 [k] [n1 n2] storage))]
-      (->B+Tree b nroot nlnbs storage)))
+                  (->B+TreeInternalNode b 1 [k] [n1 n2]))]
+      (->B+Tree b nroot nlnbs)))
 
   t/TreeLookupable
 
@@ -240,7 +238,7 @@
 
 
 (defn b+tree [b storage]
-  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map) storage) {} storage))
+  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) {} storage))
 
 
 

@@ -49,6 +49,10 @@
 
 
 
+;;;
+;;; sample invocations
+;;;
+
 #_(do (defrecord Foo [id child temp])
     (defrecord FooProxy [k])
 

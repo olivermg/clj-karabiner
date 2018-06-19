@@ -1,7 +1,7 @@
 (ns clj-karabiner.tree.bplustree
   (:refer-clojure :rename {iterate iterate-clj})
   (:require [clj-karabiner.tree :as t]
-            #_[clj-karabiner.external-storage :as es]
+            [clj-karabiner.external-memory :as em]
             #_[clojure.tools.logging :as log]))
 
 
@@ -37,8 +37,7 @@
         (> kl1 kl2) (compare (->> k1 (take kl2) ctor) k2)))))
 
 
-(defrecord B+TreeInternalNode [b size ks vs
-                               storage]
+(defrecord B+TreeInternalNode [b size ks vs]
 
   t/TreeModifyable
 
@@ -49,9 +48,9 @@
                     [ks1 nk]        [(butlast ks1) (last ks1)]
                     [vs1 vs2a vs2b] (partition-all partition-size vs)
                     vs2             (concat vs2a vs2b)]
-                [(->B+TreeInternalNode b (dec partition-size) ks1 vs1 storage)
+                [(->B+TreeInternalNode b (dec partition-size) ks1 vs1)
                  nk
-                 (->B+TreeInternalNode b (- partition-size (rem size 2)) ks2 vs2 storage)]))
+                 (->B+TreeInternalNode b (- partition-size (rem size 2)) ks2 vs2)]))
 
             (ins [{:keys [b ks vs size] :as n} k v]
               (if-not (= k ::inf)
@@ -63,9 +62,9 @@
                       nsize     (if replace? size (inc size))
                       nks       (concat ks1 [k] ks2)
                       nvs       (concat vs1 [v] vs2)]
-                  (->B+TreeInternalNode b nsize nks nvs storage))
+                  (->B+TreeInternalNode b nsize nks nvs))
                 (let [nvs (-> vs butlast (concat [v]))]
-                  (->B+TreeInternalNode b size ks nvs storage))))]
+                  (->B+TreeInternalNode b size ks nvs))))]
 
       (let [[childk childv]  (t/lookup* this k user-data)
             [n1 nk n2 nlnbs] (t/insert* childv k v user-data)
@@ -94,23 +93,7 @@
   B+TreeLeafNodeIterable
 
   (iterate-leafnodes [this]
-    (lazy-seq (mapcat iterate-leafnodes vs)))
-
-  #_es/StorageBacked
-
-  #_(load [this]
-    this)
-
-  #_(save [this]
-    (es/save-data storage
-                  (str "b+internal:" (hash this))
-                  (-> this
-                      (select-keys #{:b :size :ks :vs})
-                      (update :vs #(map es/saved-representation %))))
-    this)
-
-  #_(saved-representation [this]
-    (str "b+internal:" (hash this))))
+    (lazy-seq (mapcat iterate-leafnodes vs))))
 
 
 (defrecord B+TreeLeafNode [b size m]
@@ -189,21 +172,7 @@
   B+TreeLeafNodeIterable
 
   (iterate-leafnodes [this]
-    [this])
-
-  #_es/StorageBacked
-
-  #_(load [this]
-    this)
-
-  #_(save [this]
-    (es/save-data storage
-                  (str "b+leaf:" (hash this))
-                  (select-keys this #{:b :size :m}))
-    this)
-
-  #_(saved-representation [this]
-    (str "b+leaf:" (hash this))))
+    [this]))
 
 
 (defn lookup-sub [node lookup-fn]
@@ -212,7 +181,7 @@
       (recur (lookup-fn v))
       v)))
 
-(defrecord B+Tree [b root leaf-neighbours]
+(defrecord B+Tree [b root leaf-neighbours storage]
 
   t/TreeModifyable
 

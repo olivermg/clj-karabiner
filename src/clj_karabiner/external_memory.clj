@@ -1,21 +1,16 @@
 (ns clj-karabiner.external-memory
-  (:refer-clojure :rename {load load-clj
-                           key key-clj}))
+  (:refer-clojure :rename {load load-clj}))
 
 
-#_(defprotocol ExternalMemoryBackedInstance
-  (key [this]))
+(defprotocol ExternalMemoryBacked
+  (storage-key [this]))
 
+(defprotocol ExternalMemoryBackedReal
+  (storage-data [this])
+  (proxy-obj [this]))
 
-#_(defprotocol ExternalMemoryBacked
-  #_(load [this])
-  #_(save [this])
-  #_(saved-representation [this])
-
-  (key [this])
-  (data [this])
-  (instantiate [this])
-  (proxy-representation [this]))
+(defprotocol ExternalMemoryBackedProxy
+  (real-obj [this data]))
 
 
 (defprotocol MemoryStorage
@@ -23,29 +18,23 @@
   (save* [this k d]))
 
 
-(defrecord ExternalMemory [memory-storage serializers deserializers proxy-creators])
+(defrecord ExternalMemory [memory-storage])
 
-(defn load [this proxy-obj]
-  (let [{:keys [memory-storage deserializers]} this
-        {:keys [key-fn real-obj-fn]} (get deserializers (type proxy-obj))
-        k (key-fn proxy-obj)
-        d (load* memory-storage k)
-        real-obj (real-obj-fn d)]
-    real-obj))
+(defn load [this pobj]
+  (let [{:keys [memory-storage]} this
+        k (storage-key pobj)
+        d (load* memory-storage k)]
+    (real-obj pobj d)))
 
-(defn save [this real-obj]
-  (let [{:keys [memory-storage serializers proxy-creators]} this
-        to (type real-obj)
-        {:keys [key-fn data-fn]} (get serializers to)
-        k (key-fn real-obj)
-        d (data-fn real-obj)
-        proxy-creator (get proxy-creators to)
-        proxy (proxy-creator real-obj)]
+(defn save [this robj]
+  (let [{:keys [memory-storage]} this
+        k (storage-key robj)
+        d (storage-data robj)]
     (save* memory-storage k d)
-    proxy))
+    (proxy-obj robj)))
 
-(defn external-memory [memory-storage serializers deserializers proxy-creators]
-  (->ExternalMemory memory-storage serializers deserializers proxy-creators))
+(defn external-memory [memory-storage]
+  (->ExternalMemory memory-storage))
 
 
 

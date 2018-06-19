@@ -21,17 +21,21 @@
 (defrecord ExternalMemory [memory-storage])
 
 (defn load [this pobj]
-  (let [{:keys [memory-storage]} this
-        k (storage-key pobj)
-        d (load* memory-storage k)]
-    (real-obj pobj d)))
+  (if (satisfies? ExternalMemoryBackedProxy pobj)
+    (let [{:keys [memory-storage]} this
+          k (storage-key pobj)
+          d (load* memory-storage k)]
+      (real-obj pobj d))
+    pobj))
 
 (defn save [this robj]
-  (let [{:keys [memory-storage]} this
-        k (storage-key robj)
-        d (storage-data robj)]
-    (save* memory-storage k d)
-    (proxy-obj robj)))
+  (if (satisfies? ExternalMemoryBackedReal robj)
+    (let [{:keys [memory-storage]} this
+          k (storage-key robj)
+          d (storage-data robj)]
+      (save* memory-storage k d)
+      (proxy-obj robj))
+    robj))
 
 (defn external-memory [memory-storage]
   (->ExternalMemory memory-storage))

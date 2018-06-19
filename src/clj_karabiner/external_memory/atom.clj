@@ -24,4 +24,4 @@
 
 
 (defn atom-storage [readers]
-  (->AtomStorage (atom {}) readers))
+  (->AtomStorage (atom {}) {:readers readers}))

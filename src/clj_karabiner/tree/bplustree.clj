@@ -41,16 +41,18 @@
 
   t/TreeModifyable
 
-  (insert* [this k v user-data]
+  (insert* [this k v {:keys [external-memory] :as user-data}]
     (letfn [(split [{:keys [b ks vs size] :as n}]
               (let [partition-size  (-> size (/ 2) Math/ceil int)
                     [ks1 ks2]       (partition-all partition-size ks)
                     [ks1 nk]        [(butlast ks1) (last ks1)]
                     [vs1 vs2a vs2b] (partition-all partition-size vs)
-                    vs2             (concat vs2a vs2b)]
-                [(->B+TreeInternalNode b (dec partition-size) ks1 vs1)
-                 nk
-                 (->B+TreeInternalNode b (- partition-size (rem size 2)) ks2 vs2)]))
+                    vs2             (concat vs2a vs2b)
+                    nn1             (->B+TreeInternalNode b (dec partition-size) ks1 vs1)
+                    _               (em/save external-memory nn1)
+                    nn2             (->B+TreeInternalNode b (- partition-size (rem size 2)) ks2 vs2)
+                    _               (em/save external-memory nn2)]
+                [nn1 nk nn2]))
 
             (ins [{:keys [b ks vs size] :as n} k v]
               (if-not (= k ::inf)
@@ -61,10 +63,14 @@
                       vs2       (if replace? (rest vs2) vs2)
                       nsize     (if replace? size (inc size))
                       nks       (concat ks1 [k] ks2)
-                      nvs       (concat vs1 [v] vs2)]
-                  (->B+TreeInternalNode b nsize nks nvs))
-                (let [nvs (-> vs butlast (concat [v]))]
-                  (->B+TreeInternalNode b size ks nvs))))]
+                      nvs       (concat vs1 [v] vs2)
+                      nn        (->B+TreeInternalNode b nsize nks nvs)]
+                  (em/save external-memory nn)
+                  nn)
+                (let [nvs (-> vs butlast (concat [v]))
+                      nn  (->B+TreeInternalNode b size ks nvs)]
+                  (em/save external-memory nn)
+                  nn)))]
 
       (let [[childk childv]  (t/lookup* this k user-data)
             [n1 nk n2 nlnbs] (t/insert* childv k v user-data)
@@ -79,12 +85,12 @@
 
   t/TreeLookupable
 
-  (lookup* [this k user-data]
+  (lookup* [this k {:keys [external-memory] :as user-data}]
     (loop [[k* & ks*] ks
            [v* & vs*] vs]
       (cond
-        (nil? k*)              [::inf v*]
-        (<= (cmp-keys k k*) 0) [k* v*]
+        (nil? k*)              [::inf (em/load external-memory v*)]
+        (<= (cmp-keys k k*) 0) [k*    (em/load external-memory v*)]
         true                   (recur ks* vs*))))
 
   (lookup-range* [this k user-data]
@@ -100,7 +106,7 @@
 
   t/TreeModifyable
 
-  (insert* [this k v {:keys [leaf-neighbours] :as user-data}]
+  (insert* [this k v {:keys [leaf-neighbours external-memory] :as user-data}]
     (letfn [(insert-leaf-neighbours [n1]
               (let [{pleaf :prev nleaf :next} (get leaf-neighbours this)
                     {ppleaf :prev}            (when-not (nil? pleaf)
@@ -134,14 +140,18 @@
                     n1size partition-size
                     n2size (- partition-size (rem size 2))
                     n1 (->B+TreeLeafNode b n1size m1)
+                    _  (em/save external-memory n1)
                     n2 (->B+TreeLeafNode b n2size m2)
+                    _  (em/save external-memory n2)
                     nleafnbs (update-leaf-neighbours n1 n2)]
                 [n1 (last ks1) n2 nleafnbs]))
 
             (ins [k v]
               (let [nsize (if (contains? m k) size (inc size))
-                    nm (assoc m k v)]
-                (->B+TreeLeafNode b nsize nm)))]
+                    nm (assoc m k v)
+                    nn (->B+TreeLeafNode b nsize nm)]
+                (em/save external-memory nn)
+                nn))]
 
       (let [nn (ins k v)]
         (if (>= (-> nn :size) b)
@@ -175,30 +185,36 @@
     [this]))
 
 
-(defn lookup-sub [node lookup-fn]
+(defn- lookup-sub [node lookup-fn]
   (loop [[_ v] (lookup-fn node)]
     (if (satisfies? t/TreeLookupable v)
       (recur (lookup-fn v))
       v)))
 
-(defrecord B+Tree [b root leaf-neighbours storage]
+(defn- user-data [{:keys [leaf-neighbours external-memory] :as this}]
+  {:leaf-neighbours leaf-neighbours
+   :external-memory external-memory})
+
+(defrecord B+Tree [b root leaf-neighbours external-memory]
 
   t/TreeModifyable
 
   (insert* [this k v _]
-    (let [[n1 k n2 nlnbs] (t/insert* root k v {:leaf-neighbours leaf-neighbours})
+    (let [[n1 k n2 nlnbs] (t/insert* root k v (user-data this))
           nroot (if (nil? n2)
                   n1
-                  (->B+TreeInternalNode b 1 [k] [n1 n2]))]
-      (->B+Tree b nroot nlnbs)))
+                  (let [nn (->B+TreeInternalNode b 1 [k] [n1 n2])]
+                    (em/save external-memory nn)
+                    nn))]
+      (->B+Tree b nroot nlnbs external-memory)))
 
   t/TreeLookupable
 
   (lookup* [this k _]
-    (lookup-sub root #(t/lookup* % k {:leaf-neighbours leaf-neighbours})))
+    (lookup-sub root #(t/lookup* % k (user-data this))))
 
   (lookup-range* [this k _]
-    (lookup-sub root #(t/lookup-range* % (or k []) {:leaf-neighbours leaf-neighbours})))
+    (lookup-sub root #(t/lookup-range* % (or k []) (user-data this))))
 
   B+TreeLeafNodeIterable
 
@@ -206,8 +222,8 @@
     (iterate-leafnodes root)))
 
 
-(defn b+tree [b storage]
-  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) {} storage))
+(defn b+tree [b external-memory]
+  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) {} external-memory))
 
 
 

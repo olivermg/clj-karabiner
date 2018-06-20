@@ -243,7 +243,9 @@
       #_clojure.pprint/pprint)
   #_(-> em :memory-storage :a deref first))
 
-#_(let [kvs (take 100000 (repeatedly #(let [k (-> (rand-int 9000000)
+#_(let [as (clj-karabiner.external-memory.atom/atom-storage)
+      em (clj-karabiner.external-memory/external-memory as)
+      kvs (take 100000 (repeatedly #(let [k (-> (rand-int 9000000)
                                                 (+ 1000000))]
                                       [k (str "v" k)])))
       ts (atom [])
@@ -252,7 +254,7 @@
                           (swap! ts #(take 10 (conj % nt)))
                           #_(reset! ts t)
                           nt))
-                      (b+tree 100)
+                      (b+tree 100 em)
                       kvs))
       kv1 (first kvs)
       k1 (first kv1)]

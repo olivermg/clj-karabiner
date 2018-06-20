@@ -11,17 +11,17 @@
     (es/load-data storage key)))
 
 
-(defrecord AtomStorage [a readers]
+(defrecord AtomStorage [a]
 
   em/MemoryStorage
 
   (load* [this k]
     (->> (get @a k)
-         (edn/read-string readers)))
+         (edn/read-string)))
 
   (save* [this k d]
     (swap! a #(assoc % k (pr-str d)))))
 
 
-(defn atom-storage [readers]
-  (->AtomStorage (atom {}) {:readers readers}))
+(defn atom-storage []
+  (->AtomStorage (atom {})))

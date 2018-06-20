@@ -37,7 +37,7 @@
     (t/lookup-range* (em/load extmem this) k user-data)))
 
 
-(def edn-readers {'clj_karabiner.tree.bplustree_proxy.B+TreeInternalNodeProxy
+#_(def edn-readers {'clj_karabiner.tree.bplustree_proxy.B+TreeInternalNodeProxy
                   (fn [{:keys [key] :as o}]
                     (->B+TreeInternalNodeProxy key))
 

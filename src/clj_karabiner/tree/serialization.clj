@@ -12,7 +12,7 @@
   em/ExternalMemoryBacked
 
   (storage-key [this]
-    (str "b+in:" (-> this (select-keys #{:b :size :ks :vs}) hash)))
+    [:b+in (-> this (select-keys #{:b :size :ks :vs}) hash)])
 
   em/ExternalMemoryBackedReal
 
@@ -20,7 +20,7 @@
     {:b b
      :size size
      :ks ks
-     :vs-proxies (map em/proxy-obj vs)})
+     :vs-keys (map em/storage-key vs)})
 
   (proxy-obj [this]
     (bp/->B+TreeInternalNodeProxy (em/storage-key this))))
@@ -31,7 +31,7 @@
   em/ExternalMemoryBacked
 
   (storage-key [this]
-    (str "b+ln:" (-> this (select-keys #{:b :size :m}) hash)))
+    [:b+ln (-> this (select-keys #{:b :size :m}) hash)])
 
   em/ExternalMemoryBackedReal
 
@@ -53,8 +53,13 @@
 
   em/ExternalMemoryBackedProxy
 
-  (real-obj [this {:keys [b size ks vs-proxies] :as data}]
-    (bt/->B+TreeInternalNode b size ks vs-proxies)))
+  (real-obj [this {:keys [b size ks vs-keys] :as data}]
+    (letfn [(vskey->vs [[t h :as k]]
+              (cond
+                (= t :b+in) (bp/->B+TreeInternalNodeProxy k)
+                (= t :b+ln) (bp/->B+TreeLeafNodeProxy k)))]
+      (let [vs (map vskey->vs vs-keys)]
+        (bt/->B+TreeInternalNode b size ks vs)))))
 
 
 (extend-type B+TreeLeafNodeProxy

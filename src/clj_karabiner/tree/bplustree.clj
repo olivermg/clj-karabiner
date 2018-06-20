@@ -49,9 +49,7 @@
                     [vs1 vs2a vs2b] (partition-all partition-size vs)
                     vs2             (concat vs2a vs2b)
                     nn1             (->B+TreeInternalNode b (dec partition-size) ks1 vs1)
-                    _               (em/save external-memory nn1)
-                    nn2             (->B+TreeInternalNode b (- partition-size (rem size 2)) ks2 vs2)
-                    _               (em/save external-memory nn2)]
+                    nn2             (->B+TreeInternalNode b (- partition-size (rem size 2)) ks2 vs2)]
                 [nn1 nk nn2]))
 
             (ins [{:keys [b ks vs size] :as n} k v]
@@ -65,11 +63,9 @@
                       nks       (concat ks1 [k] ks2)
                       nvs       (concat vs1 [v] vs2)
                       nn        (->B+TreeInternalNode b nsize nks nvs)]
-                  (em/save external-memory nn)
                   nn)
                 (let [nvs (-> vs butlast (concat [v]))
                       nn  (->B+TreeInternalNode b size ks nvs)]
-                  (em/save external-memory nn)
                   nn)))]
 
       (let [[childk childv]  (t/lookup* this k user-data)
@@ -79,9 +75,12 @@
                                (-> (ins this nk n1)
                                    (ins childk n2)))]
         (if (>= (-> nn :size) b)
-          (let [[n1 nk n2] (split nn)]
-            [n1 nk n2 nlnbs])
-          [nn nil nil nlnbs]))))
+          (let [[n1 nk n2] (split nn)
+                n1p (em/save external-memory n1)
+                n2p (em/save external-memory n2)]
+            [n1p nk n2p nlnbs])
+          (let [nnp (em/save external-memory nn)]
+            [nnp nil nil nlnbs])))))
 
   t/TreeLookupable
 
@@ -139,25 +138,25 @@
                     m2 (apply dissoc m ks1)
                     n1size partition-size
                     n2size (- partition-size (rem size 2))
-                    n1 (->B+TreeLeafNode b n1size m1)
-                    _  (em/save external-memory n1)
-                    n2 (->B+TreeLeafNode b n2size m2)
-                    _  (em/save external-memory n2)
+                    n1  (->B+TreeLeafNode b n1size m1)
+                    n2  (->B+TreeLeafNode b n2size m2)
                     nleafnbs (update-leaf-neighbours n1 n2)]
                 [n1 (last ks1) n2 nleafnbs]))
 
             (ins [k v]
               (let [nsize (if (contains? m k) size (inc size))
-                    nm (assoc m k v)
-                    nn (->B+TreeLeafNode b nsize nm)]
-                (em/save external-memory nn)
+                    nm  (assoc m k v)
+                    nn  (->B+TreeLeafNode b nsize nm)]
                 nn))]
 
       (let [nn (ins k v)]
         (if (>= (-> nn :size) b)
-          (let [[n1 nk n2 nlnbs] (split nn)]
-            [n1 nk n2 nlnbs])
-          [nn nil nil (insert-leaf-neighbours nn)]))))
+          (let [[n1 nk n2 nlnbs] (split nn)
+                n1p (em/save external-memory n1)
+                n2p (em/save external-memory n2)]
+            [n1p nk n2p nlnbs])
+          (let [nnp (em/save external-memory nn)]
+            [nnp nil nil (insert-leaf-neighbours nn)])))))
 
   t/TreeLookupable
 
@@ -203,9 +202,9 @@
     (let [[n1 k n2 nlnbs] (t/insert* root k v (user-data this))
           nroot (if (nil? n2)
                   n1
-                  (let [nn (->B+TreeInternalNode b 1 [k] [n1 n2])]
-                    (em/save external-memory nn)
-                    nn))]
+                  (let [nn (->B+TreeInternalNode b 1 [k] [n1 n2])
+                        nnp (em/save external-memory nn)]
+                    nnp))]
       (->B+Tree b nroot nlnbs external-memory)))
 
   t/TreeLookupable

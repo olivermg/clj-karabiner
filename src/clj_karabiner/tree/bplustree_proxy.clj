@@ -9,32 +9,32 @@
 
   t/TreeModifyable
 
-  (insert* [this k v {:keys [extmem] :as user-data}]
-    (t/insert* (em/load extmem this) k v user-data))
+  (insert* [this k v {:keys [external-memory] :as user-data}]
+    (t/insert* (em/load external-memory this) k v user-data))
 
   t/TreeLookupable
 
-  (lookup* [this k {:keys [extmem] :as user-data}]
-    (t/lookup* (em/load extmem this) k user-data))
+  (lookup* [this k {:keys [external-memory] :as user-data}]
+    (t/lookup* (em/load external-memory this) k user-data))
 
-  (lookup-range* [this k {:keys [extmem] :as user-data}]
-    (t/lookup-range* (em/load extmem this) k user-data)))
+  (lookup-range* [this k {:keys [external-memory] :as user-data}]
+    (t/lookup-range* (em/load external-memory this) k user-data)))
 
 
 (defrecord B+TreeLeafNodeProxy [key]
 
   t/TreeModifyable
 
-  (insert* [this k v {:keys [extmem] :as user-data}]
-    (t/insert* (em/load extmem this) k v user-data))
+  (insert* [this k v {:keys [external-memory] :as user-data}]
+    (t/insert* (em/load external-memory this) k v user-data))
 
   t/TreeLookupable
 
-  (lookup* [this k {:keys [extmem] :as user-data}]
-    (t/lookup* (em/load extmem this) k user-data))
+  (lookup* [this k {:keys [external-memory] :as user-data}]
+    (t/lookup* (em/load external-memory this) k user-data))
 
-  (lookup-range* [this k {:keys [extmem] :as user-data}]
-    (t/lookup-range* (em/load extmem this) k user-data)))
+  (lookup-range* [this k {:keys [external-memory] :as user-data}]
+    (t/lookup-range* (em/load external-memory this) k user-data)))
 
 
 #_(def edn-readers {'clj_karabiner.tree.bplustree_proxy.B+TreeInternalNodeProxy

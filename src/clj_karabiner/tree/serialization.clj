@@ -38,7 +38,8 @@
   (storage-data [{:keys [b size m] :as this}]
     {:b b
      :size size
-     :m m})
+     :m m
+     })
 
   (proxy-obj [this]
     (bp/->B+TreeLeafNodeProxy (em/storage-key this))))
@@ -72,7 +73,8 @@
   em/ExternalMemoryBackedProxy
 
   (real-obj [this {:keys [b size m] :as data}]
-    (bt/->B+TreeLeafNode b size m)))
+    (let [m (into (sorted-map) m)]  ;; TODO: can we do this during load, as it would save one unnecessary map build process?
+      (bt/->B+TreeLeafNode b size m))))
 
 
 

@@ -230,14 +230,18 @@
 ;;; a few sample invocations
 ;;;
 
-#_(-> (b+tree 3)
-    (t/insert [:a 5] 55)
-    (t/insert [:a 9] 99)
-    (t/insert [:a 3] 33)
-    (t/insert [:a 4] 44)
-    (t/insert [:a 2] 22)
-    (t/insert [:a 1] 11)
-    (t/lookup-range [:a 3]))
+#_(let [as (clj-karabiner.external-memory.atom/atom-storage #_clj-karabiner.tree.bplustree-proxy/edn-readers)
+      em (clj-karabiner.external-memory/external-memory as)]
+  (-> (b+tree 3 em)
+      (t/insert [:a 5] 55)
+      (t/insert [:a 9] 99)
+      (t/insert [:a 3] 33)
+      (t/insert [:a 4] 44)
+      (t/insert [:a 2] 22)
+      (t/insert [:a 1] 11)
+      (t/lookup [:a 5])
+      #_clojure.pprint/pprint)
+  #_(-> em :memory-storage :a deref first))
 
 #_(let [kvs (take 100000 (repeatedly #(let [k (-> (rand-int 9000000)
                                                 (+ 1000000))]

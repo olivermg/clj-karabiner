@@ -194,7 +194,7 @@
   {:leaf-neighbours leaf-neighbours
    :external-memory external-memory})
 
-(defrecord B+Tree [b root leaf-neighbours external-memory]
+(defrecord B+Tree [b root external-memory leaf-neighbours last-visited]
 
   t/TreeModifyable
 
@@ -222,7 +222,7 @@
 
 
 (defn b+tree [b external-memory]
-  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) {} external-memory))
+  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) external-memory {} '()))
 
 
 

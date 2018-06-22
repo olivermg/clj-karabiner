@@ -6,4 +6,5 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [digest "1.4.4"]
                  #_[com.taoensso/nippy "2.14.0"]
-                 [com.cognitect/transit-clj "0.8.309"]])
+                 [com.cognitect/transit-clj "0.8.309"]
+                 [com.taoensso/carmine "2.18.1"]])

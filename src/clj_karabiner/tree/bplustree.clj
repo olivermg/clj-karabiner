@@ -26,10 +26,22 @@
 ;;;   last-visited state
 
 
-(defn assoc-if-not-nil [m k v]
+(defn- assoc-if-not-nil [m k v]
   (if-not (nil? k)
     (assoc m k v)
     m))
+
+
+(defrecord Queue [l xs])  ;; TODO: it's not really a queue, come up with appropriate name
+
+(defn- queue [length]
+  (->Queue length '()))
+
+(defn- push [q x]
+  (->Queue (:l q) (cons x (:xs q))))
+
+(defn- queue-values [q]
+  (:xs q))
 
 
 #_(defprotocol B+TreeModifyable
@@ -89,29 +101,31 @@
                       nn  (->B+TreeInternalNode b size ks nvs)]
                   nn)))]
 
-      (let [[childk childv]  (t/lookup* this k user-data)
-            [n1 nk n2 nlnbs] (t/insert* childv k v user-data)
-            nn               (if (nil? n2)
-                               (ins this childk n1)
-                               (-> (ins this nk n1)
-                                   (ins childk n2)))]
+      (let [[childk childv lv] (t/lookup* this k user-data)
+            [n1 nk n2 nlnbs]   (t/insert* childv k v user-data)
+            nn                 (if (nil? n2)
+                                 (ins this childk n1)
+                                 (-> (ins this nk n1)
+                                     (ins childk n2)))]
         (if (>= (-> nn :size) b)
           (let [[n1 nk n2] (split nn)
                 n1p (em/save external-memory n1)
                 n2p (em/save external-memory n2)]
-            [n1p nk n2p nlnbs])
+            [n1p nk n2p nlnbs lv])
           (let [nnp (em/save external-memory nn)]
-            [nnp nil nil nlnbs])))))
+            [nnp nil nil nlnbs lv])))))
 
   t/TreeLookupable
 
-  (lookup* [this k {:keys [external-memory] :as user-data}]
+  (lookup* [this k {:keys [external-memory last-visited] :as user-data}]
+    ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
     (loop [[k* & ks*] ks
-           [v* & vs*] vs]
+           [v* & vs*] vs
+           nlast-visited (push last-visited this)]
       (cond
-        (nil? k*)              [::inf (em/load external-memory v*)]
-        (<= (cmp-keys k k*) 0) [k*    (em/load external-memory v*)]
-        true                   (recur ks* vs*))))
+        (nil? k*)              [::inf (em/load external-memory v*) nlast-visited]
+        (<= (cmp-keys k k*) 0) [k*    (em/load external-memory v*) nlast-visited]
+        true                   (recur ks* vs* nlast-visited))))
 
   (lookup-range* [this k user-data]
     (t/lookup* this k user-data))
@@ -126,7 +140,7 @@
 
   t/TreeModifyable
 
-  (insert* [this k v {:keys [leaf-neighbours external-memory] :as user-data}]
+  (insert* [this k v {:keys [leaf-neighbours external-memory last-visited] :as user-data}]
     (letfn [(insert-leaf-neighbours [n1]
               (let [{pleaf :prev nleaf :next} (get leaf-neighbours this)
                     {ppleaf :prev}            (when-not (nil? pleaf)
@@ -175,29 +189,34 @@
           (let [[n1 nk n2 nlnbs] (split nn)
                 n1p (em/save external-memory n1)
                 n2p (em/save external-memory n2)]
-            [n1p nk n2p nlnbs])
+            [n1p nk n2p nlnbs last-visited])
           (let [nnp (em/save external-memory nn)]
-            [nnp nil nil (insert-leaf-neighbours nn)])))))
+            [nnp nil nil (insert-leaf-neighbours nn) last-visited])))))
 
   t/TreeLookupable
 
   (lookup* [this k {:keys [last-visited] :as user-data}]
-    [k (get m k) (conj last-visited this)])
+    [k (get m k) (push last-visited this)])
 
-  (lookup-range* [this k {:keys [leaf-neighbours] :as user-data}]
+  (lookup-range* [this k {:keys [leaf-neighbours last-visited] :as user-data}]
     (when (>= (cmp-keys k (-> m keys first)) 0)
       (let [matching-keys (->> (keys m)
-                               (filter #(= (cmp-keys % k) 0)))]
+                               (filter #(= (cmp-keys % k) 0)))
+            nlast-visited (push last-visited this)
+            [_ restvs restvisited] (when-let [next (-> (get leaf-neighbours this) :next)]
+                                     (t/lookup-range* next k (assoc user-data
+                                                                    :last-visited nlast-visited)))]
         ;;; TODO: we don't really need k in this case, as it is only needed for when we get
         ;;;   invoked by insert. as this never happens for lookup-range, we could get rid of
         ;;;   k (i.e. result in 2-tuple vector form). however, currently lookup* (below) relies
         ;;;   on the format to be a 2-tuple, so we leave it like that for the moment:
-        [k (lazy-seq
-            (concat (-> (select-keys m matching-keys)
-                        vals
-                        vec)
-                    (when-let [next (-> (get leaf-neighbours this) :next)]
-                      (second (t/lookup-range* next k user-data)))))])))
+        [k
+         (lazy-seq
+          (concat (-> (select-keys m matching-keys)
+                      vals
+                      vec)
+                  restvs))
+         (or restvisited nlast-visited)])))
 
   B+TreeLeafNodeIterable
 
@@ -221,13 +240,13 @@
   t/TreeModifyable
 
   (insert* [this k v _]
-    (let [[n1 k n2 nlnbs] (t/insert* root k v (user-data this))
+    (let [[n1 k n2 nlnbs nlv] (t/insert* root k v (user-data this))
           nroot (if (nil? n2)
                   n1
                   (let [nn (->B+TreeInternalNode b 1 [k] [n1 n2])
                         nnp (em/save external-memory nn)]
                     nnp))]
-      (->B+Tree b nroot external-memory nlnbs last-visited)))
+      (->B+Tree b nroot external-memory nlnbs nlv)))
 
   t/TreeLookupable
 
@@ -244,7 +263,7 @@
 
 
 (defn b+tree [b external-memory]
-  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) external-memory {} '()))
+  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) external-memory {} (queue 3)))
 
 
 

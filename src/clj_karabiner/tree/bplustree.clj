@@ -205,7 +205,7 @@
                   (let [nn (->B+TreeInternalNode b 1 [k] [n1 n2])
                         nnp (em/save external-memory nn)]
                     nnp))]
-      (->B+Tree b nroot nlnbs external-memory)))
+      (->B+Tree b nroot external-memory nlnbs last-visited)))
 
   t/TreeLookupable
 

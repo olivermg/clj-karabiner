@@ -5,6 +5,27 @@
             #_[clojure.tools.logging :as log]))
 
 
+;;; TODO:
+;;; - assign atomic key/id to each node. this will help with:
+;;;   - saving nodes in external memory
+;;;   - identifying nodes in last-visited (and maybe leaf-neighbours?)
+;;; - introduce Split record to make splitting easier
+;;; - untangle logic in nodes regarding:
+;;;   - keeping track of leaf-neighbours
+;;;   - keeping track of last-visited
+;;;   - doing actual splitting
+;;;   - saving nodes to external memory (maybe make this asynchronous
+;;;     by keeping a ledger of "dirty" nodes)
+;;;   this can probably be done by returning appropriate info from
+;;;   lookup & insert methods and processing above steps afterwards
+;;;   (maybe even delayed)
+;;; - implement better lookup logic/data model in internal nodes
+;;;   regarding lookup of appropriate child node
+;;; - introduce protocol/record for key comparison
+;;; - implement saving nodes to external memory depending on their
+;;;   last-visited state
+
+
 (defn assoc-if-not-nil [m k v]
   (if-not (nil? k)
     (assoc m k v)
@@ -160,8 +181,8 @@
 
   t/TreeLookupable
 
-  (lookup* [this k user-data]
-    [k (get m k)])
+  (lookup* [this k {:keys [last-visited] :as user-data}]
+    [k (get m k) (conj last-visited this)])
 
   (lookup-range* [this k {:keys [leaf-neighbours] :as user-data}]
     (when (>= (cmp-keys k (-> m keys first)) 0)
@@ -190,9 +211,10 @@
       (recur (lookup-fn v))
       v)))
 
-(defn- user-data [{:keys [leaf-neighbours external-memory] :as this}]
+(defn- user-data [{:keys [leaf-neighbours external-memory last-visited] :as this}]
   {:leaf-neighbours leaf-neighbours
-   :external-memory external-memory})
+   :external-memory external-memory
+   :last-visited last-visited})
 
 (defrecord B+Tree [b root external-memory leaf-neighbours last-visited]
 

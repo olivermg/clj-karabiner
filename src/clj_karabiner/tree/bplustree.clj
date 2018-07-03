@@ -2,6 +2,7 @@
   (:refer-clojure :rename {iterate iterate-clj})
   (:require [clj-karabiner.tree :as t]
             [clj-karabiner.external-memory :as em]
+            [clj-karabiner.tree.cache :as c]
             #_[clojure.tools.logging :as log]))
 
 
@@ -30,18 +31,6 @@
   (if-not (nil? k)
     (assoc m k v)
     m))
-
-
-(defrecord Cache [l xs])
-
-(defn- cache [length]
-  (->Cache length '()))
-
-(defn- put [{:keys [l xs] :as q} x]
-  (->Cache l (->> xs (cons x) (take l))))
-
-(defn- get-all [q]
-  (:xs q))
 
 
 #_(defprotocol B+TreeModifyable
@@ -121,7 +110,7 @@
     ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
     (loop [[k* & ks*] ks
            [v* & vs*] vs
-           nlast-visited (put last-visited this)]
+           nlast-visited (c/store last-visited this true)]
       (cond
         (nil? k*)              [::inf (em/load external-memory v*) nlast-visited]
         (<= (cmp-keys k k*) 0) [k*    (em/load external-memory v*) nlast-visited]
@@ -196,13 +185,13 @@
   t/TreeLookupable
 
   (lookup* [this k {:keys [last-visited] :as user-data}]
-    [k (get m k) (put last-visited this)])
+    [k (get m k) (c/store last-visited this true)])
 
   (lookup-range* [this k {:keys [leaf-neighbours last-visited] :as user-data}]
     (when (>= (cmp-keys k (-> m keys first)) 0)
       (let [matching-keys (->> (keys m)
                                (filter #(= (cmp-keys % k) 0)))
-            nlast-visited (put last-visited this)
+            nlast-visited (c/store last-visited this true)
             [_ restvs restvisited] (when-let [next (-> (get leaf-neighbours this) :next)]
                                      (t/lookup-range* next k (assoc user-data
                                                                     :last-visited nlast-visited)))]
@@ -263,7 +252,7 @@
 
 
 (defn b+tree [b external-memory]
-  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) external-memory {} (cache 3)))
+  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) external-memory {} (c/sized-cache 3)))
 
 
 

@@ -54,32 +54,20 @@
   (lookup [this k]))
 
 
-(defrecord SizedCache [maxsize cursize l m]
+(defrecord SizedCache [l m]
 
   Caching
 
   (store [this k v]
-    (if (contains? m k)
-      (SizedCache. maxsize
-                   cursize
-                   (take maxsize (conj l k))
-                   (assoc m k v))
-      (let [ncursize (inc cursize)
-            nm (assoc m k v)]
-        (SizedCache. maxsize
-                     (min maxsize ncursize)
-                     (take maxsize (conj l k))
-                     (if (> ncursize maxsize)
-                       (dissoc nm (last l))
-                       nm)))))
+    (let [nl (conj l k)]
+      (SizedCache. nl (select-keys (assoc m k v) nl))))
 
   (lookup [this k]
-    [(get m k)
-     (SizedCache. maxsize
-                  cursize
-                  (conj l k)  ;; dedup-list already removes duplicate k and puts it to front of list
-                  m)]))
+    (let [v (get m k)]
+      [v (if v
+           (SizedCache. (conj l k) m)
+           this)])))
 
 
 (defn sized-cache [size]
-  (->SizedCache size 0 (dedup-list) {}))
+  (->SizedCache (dedup-list :maxlen size) {}))

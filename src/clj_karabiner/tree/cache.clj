@@ -1,7 +1,7 @@
 (ns clj-karabiner.tree.cache)
 
 
-(deftype DedupList [l s]
+(deftype DedupList [l s maxlen curlen]
 
   clojure.lang.IPersistentCollection
 
@@ -9,15 +9,24 @@
     (.count l))
 
   (empty [this]
-    (DedupList. '() #{}))
+    (DedupList. '() #{} nil 0))
 
   (equiv [this o]
     (.equiv l (:l o)))
 
   (cons [this o]
     (if (contains? s o)
-      (DedupList. (.cons (remove #(= % o) l) o) s)
-      (DedupList. (.cons l o) (conj s o))))
+      (DedupList. (.cons (remove #(= % o) l) o) s maxlen curlen)
+      (let [ncurlen (inc curlen)]
+        (if-not maxlen
+          (DedupList. (.cons l o) (conj s o) maxlen ncurlen)
+          (if (<= ncurlen maxlen)
+            (DedupList. (.cons l o) (conj s o) maxlen ncurlen)
+            (DedupList. (take maxlen (.cons l o))
+                        (-> (conj s o)
+                            (disj (last l)))
+                        maxlen
+                        curlen))))))
 
   clojure.lang.Seqable
 
@@ -36,8 +45,8 @@
     (.more l)))
 
 
-(defn dedup-list []
-  (->DedupList '() #{}))
+(defn dedup-list [& {:keys [maxlen]}]
+  (->DedupList '() #{} maxlen 0))
 
 
 (defprotocol Caching
@@ -65,7 +74,11 @@
                        nm)))))
 
   (lookup [this k]
-    (get m k)))
+    [(get m k)
+     (SizedCache. maxsize
+                  cursize
+                  (conj l k)  ;; dedup-list already removes duplicate k and puts it to front of list
+                  m)]))
 
 
 (defn sized-cache [size]

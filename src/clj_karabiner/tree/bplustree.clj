@@ -291,7 +291,7 @@
   #_(Thread/sleep 120000)
   [kv1 (count @ts) (time (t/lookup t k1))])
 
-#_(let [storage (clj-karabiner.external-memory/external-memory (clj-karabiner.external-memory.atom/atom-storage) nil nil nil)
+#_(let [storage (clj-karabiner.external-memory/external-memory (clj-karabiner.external-memory.atom/atom-storage))
         kvs (for [k1 [:c :a :b]
                 k2 ["x" "z" "y"]
                 k3 (range 50)]

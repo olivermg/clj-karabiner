@@ -1,4 +1,5 @@
-(ns clj-karabiner.tree.cache)
+(ns clj-karabiner.tree.cache
+  (:refer-clojure :rename {keys keys-clj}))
 
 
 (deftype DedupList [l s maxlen curlen]
@@ -51,7 +52,8 @@
 
 (defprotocol Caching
   (store [this k v])
-  (lookup [this k]))
+  (lookup [this k])
+  (keys [this]))
 
 
 (defrecord SizedCache [l m]
@@ -64,9 +66,15 @@
 
   (lookup [this k]
     (let [v (get m k)]
+      ;;; TODO: do we want the user to be aware of that lookup
+      ;;;   changed state? or do we rather want to handle this
+      ;;;   internally via mutable state (atom)?
       [v (if v
            (SizedCache. (conj l k) m)
-           this)])))
+           this)]))
+
+  (keys [this]
+    l))
 
 
 (defn sized-cache [size]

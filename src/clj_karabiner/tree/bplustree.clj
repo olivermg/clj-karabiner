@@ -17,6 +17,8 @@
 ;;;   - doing actual splitting
 ;;;   - saving nodes to external memory (maybe make this asynchronous
 ;;;     by keeping a ledger of "dirty" nodes)
+;;;   - approach: separate traversal logic from "node-internal" logic:
+;;;     former should handle combining results of latter
 ;;;   this can probably be done by returning appropriate info from
 ;;;   lookup & insert methods and processing above steps afterwards
 ;;;   (maybe even delayed)

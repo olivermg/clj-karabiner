@@ -9,5 +9,6 @@
   (->IterationResult (merge (:leaf-neighbours this)
                             (:leaf-neighbours other))
                      (reduce (fn [s e]
-                               (c/store s %))
-                             (:last-visited this))))
+                               (c/store s e (c/lookup (:last-visited other) e)))
+                             (:last-visited this)
+                             (c/keys (:last-visited other)))))

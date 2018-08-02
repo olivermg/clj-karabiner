@@ -262,6 +262,7 @@
 ;;; a few sample invocations
 ;;;
 
+;;; insert a few items manually (vector keys):
 #_(let [as (clj-karabiner.external-memory.atom/atom-storage #_clj-karabiner.tree.bplustree-proxy/edn-readers)
       em (clj-karabiner.external-memory/external-memory as)]
   (-> (b+tree 3 em)
@@ -275,6 +276,7 @@
       #_clojure.pprint/pprint)
   #_(-> em :memory-storage :a deref first))
 
+;;; insert many generated items (numeric/atomic keys):
 #_(let [as (clj-karabiner.external-memory.atom/atom-storage)
       em (clj-karabiner.external-memory/external-memory as)
       kvs (take 100000 (repeatedly #(let [k (-> (rand-int 9000000)
@@ -293,6 +295,7 @@
   #_(Thread/sleep 120000)
   [kv1 (count @ts) (time (t/lookup t k1))])
 
+;;; testing range lookup (vector keys):
 #_(let [storage (clj-karabiner.external-memory/external-memory (clj-karabiner.external-memory.atom/atom-storage))
         kvs (for [k1 [:c :a :b]
                 k2 ["x" "z" "y"]

@@ -62,13 +62,13 @@
 ;;;
 
 #_(let [db (-> (clj-karabiner.fact-database/database)
-             (clj-karabiner.fact-database/append [:e1 :a1 :v1.1 :t1])
-             (clj-karabiner.fact-database/append [:e1 :a2 :v2.1 :t1])
-             (clj-karabiner.fact-database/append [:e1 :a1 :v1.2 :t2])
-             (clj-karabiner.fact-database/append [:e1 :a3 :v3.1 :t2])
-             (clj-karabiner.fact-database/append [:e2 :a1 :v1.1 :t3])
-             (clj-karabiner.fact-database/append [:e2 :a2 :v2.1 :t3])
-             (clj-karabiner.fact-database/append [:e2 :a2 :v2.2 :t4])
-             (clj-karabiner.fact-database/append [:e2 :a3 :v3.1 :t4]))
+             (clj-karabiner.fact-database/append [[:e1 :a1 :v1.1]
+                                                  [:e1 :a2 :v2.1]])
+             (clj-karabiner.fact-database/append [[:e1 :a1 :v1.2]
+                                                  [:e1 :a3 :v3.1]])
+             (clj-karabiner.fact-database/append [[:e2 :a1 :v1.1]
+                                                  [:e2 :a2 :v2.1]])
+             (clj-karabiner.fact-database/append [[:e2 :a2 :v2.2]
+                                                  [:e2 :a3 :v3.1]]))
       db-val1 (clj-karabiner.fact-database/get-database-value db 0)]
-  (query db-val1 [nil :a2 :v2.1]))
+  (query db-val1 [nil :a3 :v3.1]))

@@ -70,5 +70,5 @@
                                                   [:e2 :a2 :v2.1]])
              (clj-karabiner.fact-database/append [[:e2 :a2 :v2.2]
                                                   [:e2 :a3 :v3.1]]))
-      db-val1 (clj-karabiner.fact-database/get-database-value db 0)]
+      db-val1 (clj-karabiner.fact-database/get-database-value db)]
   (query db-val1 [nil :a3 :v3.1]))

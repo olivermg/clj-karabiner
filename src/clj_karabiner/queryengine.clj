@@ -72,14 +72,18 @@
 ;;; some sample invocations
 ;;;
 
-#_(let [db (-> (clj-karabiner.fact-database/database)
+#_(let [db (-> (clj-karabiner.fact-database/database nil)
              (clj-karabiner.fact-database/append [[:e1 :a1 :v1.1]
-                                                  [:e1 :a2 :v2.1]])
+                                                  [:e1 :a2 :v2.1]]
+                                                 :index-only? true)
              (clj-karabiner.fact-database/append [[:e1 :a1 :v1.2]
-                                                  [:e1 :a3 :v3.1]])
+                                                  [:e1 :a3 :v3.1]]
+                                                 :index-only? true)
              (clj-karabiner.fact-database/append [[:e2 :a1 :v1.1]
-                                                  [:e2 :a2 :v2.1]])
+                                                  [:e2 :a2 :v2.1]]
+                                                 :index-only? true)
              (clj-karabiner.fact-database/append [[:e2 :a2 :v2.2]
-                                                  [:e2 :a3 :v3.1]]))
+                                                  [:e2 :a3 :v3.1]]
+                                                 :index-only? true))
       db-val1 (clj-karabiner.fact-database/get-database-value db)]
-  (query db-val1 [nil :a3 :v3.1]))
+  (query db-val1 [nil :a3 :v3.1] :project-full-entities? true))

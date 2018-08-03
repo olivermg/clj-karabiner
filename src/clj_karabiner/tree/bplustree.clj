@@ -3,6 +3,8 @@
   (:require [clj-karabiner.tree :as t]
             [clj-karabiner.external-memory :as em]
             [clj-karabiner.tree.cache :as c]
+            [clj-karabiner.keycomparator :as kc]
+            [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
             #_[clojure.tools.logging :as log]))
 
 
@@ -46,26 +48,12 @@
   (iterate-leafnodes [this]))
 
 
-;;; TODO: wrap this into a protocol/record, so one can implement custom compare logics:
-(defn- cmp-keys [k1 k2]
-  (if (or (not (sequential? k1))
-          (not (sequential? k2)))
-    (compare k1 k2)
-    (let [ctor (cond (vector? k1) vec
-                     (list? k1)   list*)
-          kl1 (count k1)
-          kl2 (count k2)]
-      (cond
-        (= kl1 kl2) (compare k1 k2)
-        (< kl1 kl2) (compare k1 (->> k2 (take kl1) ctor))
-        (> kl1 kl2) (compare (->> k1 (take kl2) ctor) k2)))))
-
 
 (defrecord B+TreeInternalNode [b size ks vs]
 
   t/TreeModifyable
 
-  (insert* [this k v {:keys [external-memory] :as user-data}]
+  (insert* [this k v {:keys [key-comparator external-memory] :as user-data}]
     (letfn [(split [{:keys [b ks vs size] :as n}]
               (let [partition-size  (-> size (/ 2) Math/ceil int)
                     [ks1 ks2]       (partition-all partition-size ks)
@@ -78,9 +66,9 @@
 
             (ins [{:keys [b ks vs size] :as n} k v]
               (if-not (= k ::inf)
-                (let [[ks1 ks2] (split-with #(< (cmp-keys % k) 0) ks)
+                (let [[ks1 ks2] (split-with #(< (kc/cmp key-comparator % k) 0) ks)
                       [vs1 vs2] (split-at (count ks1) vs)
-                      replace?  (= (cmp-keys (first ks2) k) 0)
+                      replace?  (= (kc/cmp key-comparator (first ks2) k) 0)
                       ks2       (if replace? (rest ks2) ks2)
                       vs2       (if replace? (rest vs2) vs2)
                       nsize     (if replace? size (inc size))
@@ -108,15 +96,15 @@
 
   t/TreeLookupable
 
-  (lookup* [this k {:keys [external-memory last-visited] :as user-data}]
+  (lookup* [this k {:keys [key-comparator external-memory last-visited] :as user-data}]
     ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
     (loop [[k* & ks*] ks
            [v* & vs*] vs
            nlast-visited (c/store last-visited this true)]
       (cond
-        (nil? k*)              [::inf (em/load external-memory v*) nlast-visited]
-        (<= (cmp-keys k k*) 0) [k*    (em/load external-memory v*) nlast-visited]
-        true                   (recur ks* vs* nlast-visited))))
+        (nil? k*)                           [::inf (em/load external-memory v*) nlast-visited]
+        (<= (kc/cmp key-comparator k k*) 0) [k*    (em/load external-memory v*) nlast-visited]
+        true                                (recur ks* vs* nlast-visited))))
 
   (lookup-range* [this k user-data]
     (t/lookup* this k user-data))
@@ -189,10 +177,10 @@
   (lookup* [this k {:keys [last-visited] :as user-data}]
     [k (get m k) (c/store last-visited this true)])
 
-  (lookup-range* [this k {:keys [leaf-neighbours last-visited] :as user-data}]
-    (when (>= (cmp-keys k (-> m keys first)) 0)
+  (lookup-range* [this k {:keys [key-comparator leaf-neighbours last-visited] :as user-data}]
+    (when (>= (kc/cmp key-comparator k (-> m keys first)) 0)
       (let [matching-keys (->> (keys m)
-                               (filter #(= (cmp-keys % k) 0)))
+                               (filter #(= (kc/cmp key-comparator % k) 0)))
             nlast-visited (c/store last-visited this true)
             [_ restvs restvisited] (when-let [next (-> (get leaf-neighbours this) :next)]
                                      (t/lookup-range* next k (assoc user-data
@@ -221,12 +209,13 @@
       (recur (lookup-fn v))
       v)))
 
-(defn- user-data [{:keys [leaf-neighbours external-memory last-visited] :as this}]
-  {:leaf-neighbours leaf-neighbours
+(defn- user-data [{:keys [key-comparator leaf-neighbours external-memory last-visited] :as this}]
+  {:key-comparator key-comparator
+   :leaf-neighbours leaf-neighbours
    :external-memory external-memory
    :last-visited last-visited})
 
-(defrecord B+Tree [b root external-memory leaf-neighbours last-visited]
+(defrecord B+Tree [b root key-comparator external-memory leaf-neighbours last-visited]
 
   t/TreeModifyable
 
@@ -237,7 +226,7 @@
                   (let [nn (->B+TreeInternalNode b 1 [k] [n1 n2])
                         nnp (em/save external-memory nn)]
                     nnp))]
-      (->B+Tree b nroot external-memory nlnbs nlv)))
+      (->B+Tree b nroot key-comparator external-memory nlnbs nlv)))
 
   t/TreeLookupable
 
@@ -253,8 +242,14 @@
     (iterate-leafnodes root)))
 
 
-(defn b+tree [b external-memory]
-  (->B+Tree b (->B+TreeLeafNode b 0 (sorted-map)) external-memory {} (c/sized-cache 3)))
+(defn b+tree [b external-memory & {:keys [key-comparator]}]
+  (let [key-comparator (or key-comparator (kcp/partial-key-comparator))]
+    (->B+Tree b
+              (->B+TreeLeafNode b 0 (sorted-map-by #(kc/cmp key-comparator %1 %2)))
+              key-comparator
+              external-memory
+              {}
+              (c/sized-cache 3))))
 
 
 

@@ -36,7 +36,8 @@
       [true  true  true ] (remove-out-of-date-facts (lookup-eavts db-val [e a v])))))
 
 
-(defn query [{:keys [db-val] :as this} [e a v :as q]]
+(defn query [{:keys [db-val] :as this} [e a v :as q] & {:keys [project-full-entities?]
+                                                        :or {project-full-entities? false}}]
 
   (letfn [(build-entities [sorted-facts]
             (->> sorted-facts
@@ -44,12 +45,22 @@
                            (assoc-in entities [e a] v))
                          {})
                  (map (fn [[id entity]]
-                        (assoc entity :db/id id)))))]
+                        (assoc entity :db/id id)))))
 
-    (->> (query-facts this q)
-         (sort (fn [[_ _ _ t1] [_ _ _ t2]]
-                 (compare t1 t2)))
-         (build-entities))))
+          (query-full-entity-facts [facts]
+            (->> facts
+                 (map first)
+                 set
+                 (mapcat #(query-facts this [% nil nil]))))]
+
+    (let [facts (query-facts this q)
+          facts (if-not project-full-entities?
+                  facts
+                  (query-full-entity-facts facts))]
+      (->> facts
+           (sort (fn [[_ _ _ t1] [_ _ _ t2]]
+                   (compare t1 t2)))
+           (build-entities)))))
 
 
 (defn queryengine [database-value]

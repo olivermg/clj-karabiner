@@ -48,7 +48,7 @@
         facts (map (fn [[e a v :as fact]]
                      [e a v t])
                    facts)
-        [eavts aevts vaets eas] (append-to-indices this facts)]
+        [eavts aevts vaets eas] (append-tx-to-indices this facts)]
     (when-not index-only?
       (append-to-storage this facts))
     (map->FactDatabase (merge this
@@ -87,7 +87,7 @@
                (fn [& [db facts]]
                  (if facts
                    (let [t (-> facts first (nth 3))
-                         [eavts aevts vaets eas] (append-to-indices db facts)]
+                         [eavts aevts vaets eas] (append-tx-to-indices db facts)]
                      (map->FactDatabase (merge db {:current-t t
                                                    :eavts eavts
                                                    :aevts aevts

@@ -15,5 +15,10 @@
     (swap! storage #(conj % obj))))
 
 
-(defn memory-storage-backend []
-  (map->MemoryStorageBackend {:storage (atom [])}))
+(defn memory-storage-backend
+
+  ([]
+   (map->MemoryStorageBackend {:storage (atom [])}))
+
+  ([content]
+   (map->MemoryStorageBackend {:storage (atom content)})))

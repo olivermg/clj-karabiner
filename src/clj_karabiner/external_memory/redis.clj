@@ -3,9 +3,9 @@
             [taoensso.carmine :as car]))
 
 
-(defrecord RedisStorage [conn]
+(defrecord RedisExternalMemory [conn]
 
-  em/MemoryStorage
+  em/ExternalMemory
 
   (load* [this k]
     (car/wcar conn
@@ -16,6 +16,6 @@
               (car/set k d))))
 
 
-(defn redis-storage [uri]
-  (->RedisStorage {:pool {}
-                   :spec {:uri uri}}))
+(defn redis-external-memory [uri]
+  (->RedisExternalMemory {:pool {}
+                          :spec {:uri uri}}))

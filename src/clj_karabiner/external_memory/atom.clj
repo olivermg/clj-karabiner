@@ -11,9 +11,9 @@
     (es/load-data storage key)))
 
 
-(defrecord AtomStorage [a]
+(defrecord AtomExternalMemory [a]
 
-  em/MemoryStorage
+  em/ExternalMemory
 
   (load* [this k]
     (->> (get @a k)
@@ -23,5 +23,5 @@
     (swap! a #(assoc % k (pr-str d)))))
 
 
-(defn atom-storage []
-  (->AtomStorage (atom {})))
+(defn atom-external-memory []
+  (->AtomExternalMemory (atom {})))

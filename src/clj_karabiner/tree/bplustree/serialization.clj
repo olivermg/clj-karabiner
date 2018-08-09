@@ -1,7 +1,7 @@
 (ns clj-karabiner.tree.serialization
   (:require [clj-karabiner.tree :as t]
-            [clj-karabiner.tree.bplustree :as bt]
-            [clj-karabiner.tree.bplustree-proxy :as bp]
+            [clj-karabiner.tree.bplustree.nodes :as bt]
+            [clj-karabiner.tree.bplustree.proxy-nodes :as bp]
             [clj-karabiner.external-memory :as em])
   (:import [clj_karabiner.tree.bplustree B+TreeInternalNode B+TreeLeafNode]
            [clj_karabiner.tree.bplustree_proxy B+TreeInternalNodeProxy B+TreeLeafNodeProxy]))
@@ -82,8 +82,7 @@
 ;;; sample invocations
 ;;;
 
-#_(let [ms   (clj-karabiner.external-memory.atom/atom-storage bp/edn-readers)
-      mem  (em/external-memory ms)
+#_(let [mem   (clj-karabiner.external-memory.atom/atom-external-memory)
       ln1  (bt/->B+TreeLeafNode 3 1 {[:a 1] 11})
       ln2  (bt/->B+TreeLeafNode 3 2 {[:a 2] 22
                                      [:a 3] 33})

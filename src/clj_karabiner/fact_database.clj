@@ -2,7 +2,7 @@
   (:refer-clojure :rename {load load-clj})
   (:require [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree :as bp]
-            [clj-karabiner.external-memory :as em]
+            #_[clj-karabiner.external-memory :as em]
             [clj-karabiner.external-memory.atom :as ema]
             [clj-karabiner.queryengine :as qe]
             [clj-karabiner.fact-database-value :as fdv]
@@ -131,12 +131,10 @@
 
 (defn database [storage-backend & {:keys [b+tree-branching-factor
                                           generation-count]
-                                   :or {b+tree-branching-factor 1000
-                                        generation-count 1000}}]
+                                   :or {generation-count 1000}}]
 
   (letfn [(make-index []
-            (bp/b+tree b+tree-branching-factor
-                       (em/external-memory (ema/atom-storage))))]
+            (bp/b+tree :b b+tree-branching-factor))]
 
     (-> (map->FactDatabase {:storage-backend storage-backend
                             :generation-count generation-count

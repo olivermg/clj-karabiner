@@ -1,4 +1,4 @@
-(ns clj-karabiner.tree.bplustree-proxy
+(ns clj-karabiner.tree.proxy-nodes
   (:require [clj-karabiner.tree :as t]
             #_[clj-karabiner.tree.bplustree :as bt]
             [clj-karabiner.external-memory :as em])

@@ -2,10 +2,8 @@
   (:refer-clojure :rename {load load-clj})
   (:require [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree :as bp]
-            #_[clj-karabiner.external-memory :as em]
             [clj-karabiner.external-memory.atom :as ema]
-            [clj-karabiner.queryengine :as qe]
-            [clj-karabiner.fact-database-value :as fdv]
+            [clj-karabiner.fact-database.dbvalue :as dbv]
             [clj-karabiner.storage-backend :as sb]))
 
 
@@ -111,11 +109,10 @@
                           0)]
      (if (and (< generation-idx generation-count)
               (>= generation-idx 0))
-       (-> (fdv/->FactDatabaseValue (nth eavts generation-idx)
-                                    (nth aevts generation-idx)
-                                    (nth vaets generation-idx)
-                                    (nth eas   generation-idx))
-           (qe/queryengine))
+       (dbv/dbvalue (nth eavts generation-idx)
+                    (nth aevts generation-idx)
+                    (nth vaets generation-idx)
+                    (nth eas   generation-idx))
        (throw (ex-info "invalid value for at-t, it's either not remembered anymore or does not exist yet"
                        {:at-t at-t
                         :current-t current-t
@@ -165,6 +162,6 @@
              (append [[:e2 :a2 :v2.2]
                       [:e2 :a3 :v3.1]]))
       db-val1 (get-database-value db)]
-  #_(clj-karabiner.queryengine/query-facts db-val1 [nil :a3 :v3.1])
-  (clj-karabiner.queryengine/query db-val1 [nil :a3 :v3.2]
-                                   :project-full-entities? true))
+  #_(clj-karabiner.fact-database.dbvalue/query-facts db-val1 [nil :a3 :v3.1])
+  (clj-karabiner.fact-database.dbvalue/query db-val1 [nil :a3 :v3.2]
+                                             :project-full-entities? true))

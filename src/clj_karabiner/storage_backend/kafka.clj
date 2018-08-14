@@ -6,28 +6,15 @@
            [org.apache.kafka.clients.consumer KafkaConsumer]))
 
 
-(defrecord KafkaStorageBackend [topic-fn partition-fn partition-count replication-factor
-                                topics admin producer]
-
-  sb/LoadableStorageBackend
-
-  (load [this]
-    )
-
-  sb/AppendableStorageBackend
-
-  (append [this obj]
-    ))
-
-
 (defn- topic-exists? [{:keys [topics] :as this} topic]
-  (contains? topics topic))
+  (contains? @topics topic))
 
 
-(defn- create-topic [{:keys [partition-count replication-factor admin] :as this} topic]
+(defn- create-topic [{:keys [partition-count replication-factor admin topics] :as this} topic]
   (-> (.createTopics admin [(NewTopic. topic partition-count replication-factor)])
       (.all)
-      (.get)))
+      (.get))
+  (swap! topics #(conj % topic)))
 
 
 (defn- list-topics [{:keys [admin] :as this}]
@@ -38,16 +25,41 @@
          set)))
 
 
-(defn kafka-storage-backend [& {:keys [bootstrap-server topic-fn partition-fn partition-count replication-factor]
+(defrecord KafkaStorageBackend [topic-fn key-fn value-fn partition-count replication-factor
+                                topics admin producer]
+
+  sb/LoadableStorageBackend
+
+  (load [this]
+    )
+
+  sb/AppendableStorageBackend
+
+  (append [this obj]
+    (let [topic (topic-fn obj)]
+      (when-not (topic-exists? this topic)
+        (create-topic this topic))
+      (let [key (key-fn obj)
+            value (value-fn obj)
+            record (ProducerRecord. topic key value)
+            record-meta (-> (.send producer record)
+                            (.get))]
+        {:partition (.partition record-meta)
+         :offset (.offset record-meta)
+         :timestamp (.timestamp record-meta)}))))
+
+
+(defn kafka-storage-backend [& {:keys [bootstrap-server topic-fn key-fn value-fn partition-count replication-factor]
                                 :or {bootstrap-server "localhost:9092"}}]
   (let [admin (AdminClient/create {"bootstrap.servers" bootstrap-server})
         producer (KafkaProducer. {"bootstrap.servers" bootstrap-server
                                   "key.serializer"    "org.apache.kafka.common.serialization.StringSerializer"
                                   "value.serializer"  "org.apache.kafka.common.serialization.StringSerializer"})
         ksb (map->KafkaStorageBackend {:topic-fn           (or topic-fn :topic)
-                                       :partition-fn       (or partition-fn :partition)
+                                       :key-fn             (or key-fn :key)
+                                       :value-fn           (or value-fn :value)
                                        :partition-count    (or partition-count 100)
                                        :replication-factor (or partition-count 1)
                                        :admin              admin
                                        :producer           producer})]
-    (assoc ksb :topics (list-topics ksb))))
+    (assoc ksb :topics (atom (list-topics ksb)))))

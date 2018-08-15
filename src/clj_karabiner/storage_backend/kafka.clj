@@ -25,13 +25,30 @@
          set)))
 
 
-(defrecord KafkaStorageBackend [topic-fn key-fn value-fn partition-count replication-factor
+(defrecord KafkaStorageBackend [bootstrap-server topic-fn key-fn value-fn partition-count replication-factor
                                 topics admin producer]
 
   sb/LoadableStorageBackend
 
   (load [this]
-    )
+    (let [consumer (KafkaConsumer. {"bootstrap.servers"  bootstrap-server
+                                    "key.deserializer"   "org.apache.kafka.common.serialization.StringDeserializer"
+                                    "value.deserializer" "org.apache.kafka.common.serialization.StringDeserializer"
+                                    "group.id"           (str (java.util.UUID/randomUUID))
+                                    "enable.auto.commit" "false"})]
+      (doto consumer
+        (.subscribe @topics)
+        (.poll 0)
+        (.seekToBeginning (.assignment consumer)))
+      (let [crs (->> (.poll consumer 100)
+                     (map (fn [cr]
+                            {:key (.key cr)
+                             :value (.value cr)
+                             :topic (.topic cr)
+                             :partition (.partition cr)
+                             :offset (.offset cr)})))]
+        (.close consumer)
+        crs)))
 
   sb/AppendableStorageBackend
 
@@ -55,7 +72,8 @@
         producer (KafkaProducer. {"bootstrap.servers" bootstrap-server
                                   "key.serializer"    "org.apache.kafka.common.serialization.StringSerializer"
                                   "value.serializer"  "org.apache.kafka.common.serialization.StringSerializer"})
-        ksb (map->KafkaStorageBackend {:topic-fn           (or topic-fn :topic)
+        ksb (map->KafkaStorageBackend {:bootstrap-server   bootstrap-server
+                                       :topic-fn           (or topic-fn :topic)
                                        :key-fn             (or key-fn :key)
                                        :value-fn           (or value-fn :value)
                                        :partition-count    (or partition-count 100)

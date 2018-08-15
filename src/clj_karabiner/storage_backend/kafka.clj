@@ -31,6 +31,7 @@
   sb/LoadableStorageBackend
 
   (load [this]
+    ;;; TODO: make this lazy
     (let [consumer (KafkaConsumer. {"bootstrap.servers"  bootstrap-server
                                     "key.deserializer"   "org.apache.kafka.common.serialization.StringDeserializer"
                                     "value.deserializer" "org.apache.kafka.common.serialization.StringDeserializer"

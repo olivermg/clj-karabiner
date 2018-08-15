@@ -81,3 +81,15 @@
                                        :admin              admin
                                        :producer           producer})]
     (assoc ksb :topics (atom (list-topics ksb)))))
+
+
+
+;;;
+;;; sample invocations
+;;;
+
+#_(let [be (kafka-storage-backend)]
+  (sb/append be {:topic "supertopic555" :key "foo" :value "foov"})
+  (sb/append be {:topic "supertopic555" :key "bar" :value "barv"})
+  (sb/append be {:topic "supertopic666" :key "baz" :value "bazv"})
+  (sb/load be))

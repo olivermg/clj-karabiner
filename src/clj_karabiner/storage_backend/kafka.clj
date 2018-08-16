@@ -31,25 +31,31 @@
   sb/LoadableStorageBackend
 
   (load [this]
-    ;;; TODO: make this lazy
     (let [consumer (KafkaConsumer. {"bootstrap.servers"  bootstrap-server
                                     "key.deserializer"   "org.apache.kafka.common.serialization.StringDeserializer"
                                     "value.deserializer" "org.apache.kafka.common.serialization.StringDeserializer"
                                     "group.id"           (str (java.util.UUID/randomUUID))
+                                    "max.poll.records"   "500"
                                     "enable.auto.commit" "false"})]
       (doto consumer
         (.subscribe @topics)
         (.poll 0)
         (.seekToBeginning (.assignment consumer)))
-      (let [crs (->> (.poll consumer 100)
-                     (map (fn [cr]
-                            {:key (.key cr)
-                             :value (.value cr)
-                             :topic (.topic cr)
-                             :partition (.partition cr)
-                             :offset (.offset cr)})))]
-        (.close consumer)
-        crs)))
+      (letfn [(get-chunks []
+                (lazy-seq
+                 (let [crs (.poll consumer 250)]
+                   (if (and crs (> (.count crs) 0))
+                     (concat (map (fn [cr]
+                                    {:key (.key cr)
+                                     :value (.value cr)
+                                     :topic (.topic cr)
+                                     :partition (.partition cr)
+                                     :offset (.offset cr)})
+                                  crs)
+                             (get-chunks))
+                     (do (.close consumer)
+                         nil)))))]
+        (get-chunks))))
 
   sb/AppendableStorageBackend
 

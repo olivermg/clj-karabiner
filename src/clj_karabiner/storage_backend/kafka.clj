@@ -78,7 +78,6 @@
         (.seekToBeginning (.assignment consumer)))
       (letfn [(get-chunks []
                 (lazy-seq
-                 (println "I/O")
                  (let [crs (.poll consumer 250)]
                    (if (and crs (> (.count crs) 0))
                      (concat (map (fn [cr]

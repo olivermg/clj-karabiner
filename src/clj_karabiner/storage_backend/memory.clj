@@ -2,6 +2,11 @@
   (:require [clj-karabiner.storage-backend :as sb]))
 
 
+;;; TODO: redesign this concept so that it can handle
+;;;   objects stored by other processes. ie implement
+;;;   some kind of ongoing stream instead of a single
+;;;   invocation of load:
+
 (defrecord MemoryStorageBackend [storage]
 
   sb/LoadableStorageBackend

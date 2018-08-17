@@ -66,33 +66,36 @@
   sb/LoadableStorageBackend
 
   (load [this]
-    (let [consumer (KafkaConsumer. {"bootstrap.servers"  bootstrap-server
-                                    "key.deserializer"   "clj_karabiner.storage_backend.kafka.TransitDeserializer"
-                                    "value.deserializer" "clj_karabiner.storage_backend.kafka.TransitDeserializer"
-                                    "group.id"           (str (java.util.UUID/randomUUID))
-                                    "max.poll.records"   "500"
-                                    "enable.auto.commit" "false"})]
-      (doto consumer
-        (.subscribe @topics)
-        (.poll 0)
-        (.seekToBeginning (.assignment consumer)))
-      (letfn [(get-chunks []
-                (lazy-seq
-                 (let [crs (.poll consumer 250)]
-                   (if (and crs (> (.count crs) 0))
-                     (concat (map (fn [cr]
-                                    {:key (.key cr)
-                                     :value (.value cr)
-                                     :topic (->> (.topic cr)
-                                                 (drop (count topic-prefix))
-                                                 (apply str))
-                                     :partition (.partition cr)
-                                     :offset (.offset cr)})
-                                  crs)
-                             (get-chunks))
-                     (do (.close consumer)
-                         nil)))))]
-        (get-chunks))))
+    (if (not-empty @topics)
+      (let [consumer (KafkaConsumer. {"bootstrap.servers"  bootstrap-server
+                                      "key.deserializer"   "clj_karabiner.storage_backend.kafka.TransitDeserializer"
+                                      "value.deserializer" "clj_karabiner.storage_backend.kafka.TransitDeserializer"
+                                      "group.id"           (str (java.util.UUID/randomUUID))
+                                      "max.poll.records"   "500"
+                                      "enable.auto.commit" "false"})]
+        (doto consumer
+          (.subscribe @topics)
+          (.poll 0)
+          (.seekToBeginning (.assignment consumer)))
+        (letfn [(get-chunks []
+                  (lazy-seq
+                   (let [crs (.poll consumer 250)]
+                     (if (and crs (> (.count crs) 0))
+                       (concat (map (fn [cr]
+                                      #_{:key (.key cr)
+                                       :value (.value cr)
+                                       :topic (->> (.topic cr)
+                                                   (drop (count topic-prefix))
+                                                   (apply str))
+                                       :partition (.partition cr)
+                                       :offset (.offset cr)}
+                                      (.value cr))
+                                    crs)
+                               (get-chunks))
+                       (do (.close consumer)
+                           nil)))))]
+          (get-chunks)))
+      []))
 
   sb/AppendableStorageBackend
 

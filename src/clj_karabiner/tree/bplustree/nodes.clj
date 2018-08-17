@@ -98,9 +98,11 @@
 
   (lookup* [this k {:keys [key-comparator external-memory last-visited] :as user-data}]
     ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
+    ;;; TODO: search via binary search
     (loop [[k* & ks*] ks
            [v* & vs*] vs
-           nlast-visited (c/store last-visited this true)]
+           nlast-visited (c/store last-visited this true)  ;; TODO: do we need to do this inside the loop?
+           ]
       (cond
         (nil? k*)                           [::inf (em/load external-memory v*) nlast-visited]
         (<= (kc/cmp key-comparator k k*) 0) [k*    (em/load external-memory v*) nlast-visited]

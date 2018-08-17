@@ -2,7 +2,9 @@
   (:require [clojure.string :as str]
             [cognitect.transit :as t]
             #_[clojure.core.async :refer [go go-loop <! >! put!] :as a]
-            [clj-karabiner.storage-backend :as sb])
+            [clj-karabiner.storage-backend :as sb]
+            [clojure.spec.alpha :as s]
+            [clojure.spec.gen.alpha :as sg])
   (:import [java.io ByteArrayOutputStream ByteArrayInputStream]
            [org.apache.kafka.clients.admin AdminClient NewTopic]
            [org.apache.kafka.clients.producer KafkaProducer ProducerRecord]
@@ -66,19 +68,23 @@
   sb/LoadableStorageBackend
 
   (load [this]
+    (println "TOPICS" @topics)
     (if (not-empty @topics)
       (let [consumer (KafkaConsumer. {"bootstrap.servers"  bootstrap-server
                                       "key.deserializer"   "clj_karabiner.storage_backend.kafka.TransitDeserializer"
                                       "value.deserializer" "clj_karabiner.storage_backend.kafka.TransitDeserializer"
                                       "group.id"           (str (java.util.UUID/randomUUID))
                                       "max.poll.records"   "500"
-                                      "enable.auto.commit" "false"})]
+                                      "enable.auto.commit" "false"})
+            cnt (atom 1)]
         (doto consumer
           (.subscribe @topics)
           (.poll 0)
           (.seekToBeginning (.assignment consumer)))
         (letfn [(get-chunks []
                   (lazy-seq
+                   (println "I/O" @cnt)
+                   (swap! cnt inc)
                    (let [crs (.poll consumer 250)]
                      (if (and crs (> (.count crs) 0))
                        (concat (map (fn [cr]
@@ -141,3 +147,28 @@
   (sb/append be {:topic "supertopic555" :key "bar" :value "barv"})
   (sb/append be {:topic "supertopic666" :key "baz" :value "bazv"})
   (sb/load be))
+
+
+;;; generate some data
+#_(let [e-pool (set (for [ns ["artist" "record" "song"]
+                        id (range 1000)]
+                    (keyword ns (str "id" id))))]
+  (s/def ::e   e-pool)
+  (s/def ::eav (s/or :name   (s/cat :e ::e :a #{:name}   :v string?)
+                     :length (s/cat :e ::e :a #{:length} :v number?)
+                     :ref    (s/cat :e ::e :a #{:ref}    :v ::e)
+                     :date   (s/cat :e ::e :a #{:date}   :v inst?)))
+
+  (let [be (kafka-storage-backend
+            :topic-prefix "factdb"
+            :topic-fn (fn [[e a v t :as fact]]
+                        (namespace e))
+            :key-fn (fn [[e a v t :as fact]]
+                      (name e))
+            :value-fn (fn [fact]
+                        fact))]
+    (dotimes [i 100000]
+      (let [g    (s/gen ::eav)
+            t    (int (/ i 3))
+            fact (-> (sg/generate g) vec (conj t))]
+        (sb/append be fact)))))

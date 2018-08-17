@@ -147,7 +147,7 @@
 ;;; some sample invocations
 ;;;
 
-#_(let [be (clj-karabiner.storage-backend.memory/memory-storage-backend
+#_(let [#_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
           [[:person/e0 :a1 :v1.1 1]
            [:person/e0 :a2 :v2.1 1]
            [:person/e0 :a3 :v3.1 1]
@@ -161,13 +161,13 @@
           :value-fn (fn [fact]
                       fact))
       db (-> (database be)
-             (append [[:person/e1 :a1 :v1.1]
+             #_(append [[:person/e1 :a1 :v1.1]
                       [:person/e1 :a2 :v2.1]])
-             (append [[:person/e1 :a1 :v1.2]
+             #_(append [[:person/e1 :a1 :v1.2]
                       [:person/e1 :a3 :v3.1]])
-             (append [[:person/e2 :a1 :v1.1]
+             #_(append [[:person/e2 :a1 :v1.1]
                       [:person/e2 :a2 :v2.1]])
-             (append [[:person/e2 :a2 :v2.2]
+             #_(append [[:person/e2 :a2 :v2.2]
                       [:person/e2 :a3 :v3.1]]))
       db-val1 (get-database-value db)]
   #_(clj-karabiner.fact-database.dbvalue/query-facts db-val1 [nil :a3 :v3.1])

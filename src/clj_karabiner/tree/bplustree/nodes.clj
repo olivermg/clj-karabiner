@@ -99,6 +99,23 @@
   (lookup* [this k {:keys [key-comparator external-memory last-visited] :as user-data}]
     ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
     ;;; TODO: search via binary search
+    #_(let [maxi (dec size)]
+      (letfn [(step-up [i]
+                (+ (int (Math/ceil (/ (- maxi i) 2))) i))
+              (step-down [i]
+                (int (Math/floor (/ i 2))))]
+        (loop [i (step-down maxi)
+               nlast-visited (c/store last-visited this true)]
+          (let [k* (get ks i)]
+            (cond
+              (<= (kc/cmp key-comparator k k*) 0) (let [k** (get ks (dec i))]
+                                                    (if (or (nil? k**) (> k k**))
+                                                      [k** (em/load external-memory (get vs i)) nlast-visited]
+                                                      (recur (step-down i) nlast-visited)))
+              (> (kc/cmp key-comparator k k*) 0)  (let [k** (get ks (inc i))]
+                                                    (if (or (nil? k**) (<= k k**))
+                                                      [k*  (em/load external-memory (get vs (inc i))) nlast-visited]
+                                                      (recur (step-up i) nlast-visited))))))))
     (loop [[k* & ks*] ks
            [v* & vs*] vs
            nlast-visited (c/store last-visited this true)  ;; TODO: do we need to do this inside the loop?

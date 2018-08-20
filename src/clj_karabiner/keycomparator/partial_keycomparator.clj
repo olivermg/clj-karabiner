@@ -2,11 +2,15 @@
   (:require [clj-karabiner.keycomparator :as kc]))
 
 
+(def ^:dynamic *cnt* (atom 0))
+(def ^:dynamic *cnt-future* (atom nil))
+
 (defrecord PartialKeyComparator []
 
   kc/KeyComparator
 
   (cmp [this a b]
+    (swap! *cnt* inc)
     (letfn [(coll-ctor [c]
               (cond (vector? c) vec
                     (list? c)   list*
@@ -49,3 +53,16 @@
 
 (defn partial-key-comparator []
   (->PartialKeyComparator))
+
+(defn cnt-on []
+  (reset! *cnt* 0)
+  (reset! *cnt-future*
+          (future
+            (loop []
+              (Thread/sleep 1000)
+              (println "CNT:" @*cnt*)
+              (reset! *cnt* 0)
+              (recur)))))
+
+(defn cnt-off []
+  (future-cancel @*cnt-future*))

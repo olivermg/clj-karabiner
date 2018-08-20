@@ -165,10 +165,20 @@
                         (namespace e))
             :key-fn (fn [[e a v t :as fact]]
                       (name e))
-            :value-fn (fn [fact]
-                        fact))]
-    (dotimes [i 100000]
+            :value-fn identity)]
+    (dotimes [i 5000]
       (let [g    (s/gen ::eav)
             t    (int (/ i 3))
             fact (-> (sg/generate g) vec (conj t))]
         (sb/append be fact)))))
+
+
+;;; load kafka data
+#_(let [be (kafka-storage-backend
+          :topic-prefix "factdb"
+          :topic-fn (fn [[e a v t :as fact]]
+                      (namespace e))
+          :key-fn (fn [[e a v t :as fact]]
+                    (name e))
+          :value-fn identity)]
+  (count (sb/load be)))

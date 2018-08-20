@@ -49,6 +49,28 @@
 
 
 
+(defn internal-lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
+  ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
+  (letfn [(next-step [step]
+            (max (int (/ step 2)) 1))]
+    (loop [step (next-step size)
+           i (int (/ (dec size) 2))
+           nlast-visited (c/store last-visited this true)]
+      (let [k* (nth ks i nil)]
+        (cond
+          (<= (kc/cmp key-comparator k k*) 0) (let [k** (nth ks (dec i) nil)]
+                                                (if (or (nil? k**) (> (kc/cmp key-comparator k k**) 0))
+                                                  [k* (em/load external-memory (nth vs i nil)) nlast-visited]
+                                                  (let [nstep (next-step step)
+                                                        ni    (- i nstep)]
+                                                    (recur nstep ni nlast-visited))))
+          (> (kc/cmp key-comparator k k*) 0)  (let [k** (nth ks (inc i) nil)]
+                                                (if (or (nil? k**) (<= (kc/cmp key-comparator k k**) 0))
+                                                  [(or k** ::inf)  (em/load external-memory (nth vs (inc i) nil)) nlast-visited]
+                                                  (let [nstep (next-step step)
+                                                        ni    (+ i nstep)]
+                                                    (recur nstep ni nlast-visited)))))))))
+
 (defrecord B+TreeInternalNode [b size ks vs]
 
   t/TreeModifyable
@@ -96,34 +118,8 @@
 
   t/TreeLookupable
 
-  (lookup* [this k {:keys [key-comparator external-memory last-visited] :as user-data}]
-    ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
-    ;;; TODO: search via binary search
-    #_(let [maxi (dec size)]
-      (letfn [(step-up [i]
-                (+ (int (Math/ceil (/ (- maxi i) 2))) i))
-              (step-down [i]
-                (int (Math/floor (/ i 2))))]
-        (loop [i (step-down maxi)
-               nlast-visited (c/store last-visited this true)]
-          (let [k* (get ks i)]
-            (cond
-              (<= (kc/cmp key-comparator k k*) 0) (let [k** (get ks (dec i))]
-                                                    (if (or (nil? k**) (> k k**))
-                                                      [k** (em/load external-memory (get vs i)) nlast-visited]
-                                                      (recur (step-down i) nlast-visited)))
-              (> (kc/cmp key-comparator k k*) 0)  (let [k** (get ks (inc i))]
-                                                    (if (or (nil? k**) (<= k k**))
-                                                      [k*  (em/load external-memory (get vs (inc i))) nlast-visited]
-                                                      (recur (step-up i) nlast-visited))))))))
-    (loop [[k* & ks*] ks
-           [v* & vs*] vs
-           nlast-visited (c/store last-visited this true)  ;; TODO: do we need to do this inside the loop?
-           ]
-      (cond
-        (nil? k*)                           [::inf (em/load external-memory v*) nlast-visited]
-        (<= (kc/cmp key-comparator k k*) 0) [k*    (em/load external-memory v*) nlast-visited]
-        true                                (recur ks* vs* nlast-visited))))
+  (lookup* [this k user-data]
+    (internal-lookup* this k user-data))
 
   (lookup-range* [this k user-data]
     (t/lookup* this k user-data))

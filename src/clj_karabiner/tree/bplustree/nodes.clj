@@ -88,6 +88,8 @@
 
             (ins [{:keys [b ks vs size] :as n} k v]
               (if-not (= k ::inf)
+                ;;; TODO: this split-with is slow, as it works like a sequential search. we should improve this and
+                ;;;   instead implement our own split, doing binary search (like internal-lookup* above):
                 (let [[ks1 ks2] (split-with #(< (kc/cmp key-comparator % k) 0) ks)
                       [vs1 vs2] (split-at (count ks1) vs)
                       replace?  (= (kc/cmp key-comparator (first ks2) k) 0)

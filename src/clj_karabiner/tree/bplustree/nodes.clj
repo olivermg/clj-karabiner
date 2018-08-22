@@ -49,7 +49,22 @@
 
 
 
-(defn internal-lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
+(defn- binary-search [coll-size cmp-fn key-fn value-fn not-found-value k]
+  (letfn [(bs [i prev-i pprev-i]
+            (if (and (not= i prev-i) (not= i pprev-i))
+              (let [step (max (int (/ (Math/abs (- i prev-i)) 2)) 1)
+                    k* (key-fn i)
+                    cmp-val (cmp-fn k k*)]
+                (cond
+                  (< cmp-val 0) (recur (max (- i step) 0)               i prev-i)
+                  (> cmp-val 0) (recur (min (+ i step) (dec coll-size)) i prev-i)
+                  true          (value-fn i)))
+              not-found-value))]
+
+    (bs (int (/ coll-size 2)) 0 0)))
+
+
+(defn- internal-lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
   ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
   (letfn [(next-step [step]
             (max (int (/ step 2)) 1))]

@@ -64,7 +64,7 @@
     (bs (int (/ coll-size 2)) 0 0)))
 
 
-(defn- internal-lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
+(defn internal-lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
   ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
   (letfn [(next-step [step]
             (max (int (/ step 2)) 1))]

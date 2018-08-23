@@ -49,42 +49,48 @@
 
 
 
-(defn- binary-search [coll-size cmp-fn key-fn value-fn not-found-value k]
+(defn- binary-search [coll-size cmp-fn key-fn value-fn k & {:keys [not-found-value]}]
   (letfn [(bs [i prev-i pprev-i]
             (if (and (not= i prev-i) (not= i pprev-i))
-              (let [step (max (int (/ (Math/abs (- i prev-i)) 2)) 1)
+              (let [step (max (int (/ (Math/abs (- i (or prev-i 0))) 2)) 1)
                     k* (key-fn i)
-                    cmp-val (cmp-fn k k*)]
+                    [cmp-val k**] (cmp-fn k k* i)]
                 (cond
                   (< cmp-val 0) (recur (max (- i step) 0)               i prev-i)
                   (> cmp-val 0) (recur (min (+ i step) (dec coll-size)) i prev-i)
-                  true          (value-fn i)))
+                  true          (value-fn i k k* k**)))
               not-found-value))]
 
-    (bs (int (/ coll-size 2)) 0 0)))
+    (bs (int (/ coll-size 2)) nil nil)))
 
 
 (defn internal-lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
-  ;;; TODO: it'd be more elegant to not loop here but rely on multiple dispatch
-  (letfn [(next-step [step]
-            (max (int (/ step 2)) 1))]
-    (loop [step (next-step size)
-           i (int (/ (dec size) 2))
-           nlast-visited (c/store last-visited this true)]
-      (let [k* (nth ks i nil)]
-        (cond
-          (<= (kc/cmp key-comparator k k*) 0) (let [k** (nth ks (dec i) nil)]
-                                                (if (or (nil? k**) (> (kc/cmp key-comparator k k**) 0))
-                                                  [k* (em/load external-memory (nth vs i nil)) nlast-visited]
-                                                  (let [nstep (next-step step)
-                                                        ni    (- i nstep)]
-                                                    (recur nstep ni nlast-visited))))
-          (> (kc/cmp key-comparator k k*) 0)  (let [k** (nth ks (inc i) nil)]
-                                                (if (or (nil? k**) (<= (kc/cmp key-comparator k k**) 0))
-                                                  [(or k** ::inf)  (em/load external-memory (nth vs (inc i) nil)) nlast-visited]
-                                                  (let [nstep (next-step step)
-                                                        ni    (+ i nstep)]
-                                                    (recur nstep ni nlast-visited)))))))))
+  (letfn [(key-fn [i]
+            (nth ks i))
+
+          (cmp-fn [k k* i]
+            (let [cmpv (kc/cmp key-comparator k k*)]
+              (cond
+                (< cmpv 0) (let [k** (nth ks (dec i) nil)]
+                             (if (or (nil? k**) (> (kc/cmp key-comparator k k**) 0))
+                               [0 k*]
+                               [-1]))
+                (> cmpv 0) (let [k** (nth ks (inc i) nil)]
+                             (if (or (nil? k**) (<= (kc/cmp key-comparator k k**) 0))
+                               [0 (or k** ::inf)]
+                               [1]))
+                true       [0 k*])))
+
+          (value-fn [i k k* k**]
+            (let [i* (cond
+                       (= k** ::inf)                         (inc i)
+                       (<= (kc/cmp key-comparator k** k*) 0) i
+                       true                                  (inc i))]
+              [k** (nth vs i*)]))]
+
+    (let [[k* v*] (binary-search size cmp-fn key-fn value-fn k)
+          nlast-visited (c/store last-visited this true)]
+      [k* (em/load external-memory v*) nlast-visited])))
 
 (defrecord B+TreeInternalNode [b size ks vs]
 

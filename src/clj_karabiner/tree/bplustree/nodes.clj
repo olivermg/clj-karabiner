@@ -49,10 +49,11 @@
 
 
 
-(defn- binary-search [coll-size cmp-fn key-fn value-fn k & {:keys [not-found-value]}]
+(defn binary-search [coll-size cmp-fn key-fn value-fn k & {:keys [not-found-value]}]
   (letfn [(bs [i prev-i pprev-i]
             (if (and (not= i prev-i) (not= i pprev-i))
-              (let [step (max (int (/ (Math/abs (- i (or prev-i 0))) 2)) 1)
+              (let [step (let [step* (/ (- i (or prev-i 0)) 2)]  ;; NOTE: using Math/abs is slow here
+                           (max (int (max step* (- step*))) 1))
                     k* (key-fn i)
                     [cmp-val k**] (cmp-fn k k* i)]
                 (cond
@@ -64,7 +65,7 @@
     (bs (int (/ coll-size 2)) nil nil)))
 
 
-(defn internal-lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
+(defn ksvs-range-search [ks ksize vs k key-comparator]
   (letfn [(key-fn [i]
             (nth ks i))
 
@@ -86,12 +87,22 @@
                        (= k** ::inf)                         (inc i)
                        (<= (kc/cmp key-comparator k** k*) 0) i
                        true                                  (inc i))]
-              [k** (nth vs i*)]))]
+              [k** (nth vs i*) i i*]))]
 
-    (let [[k* v*] (binary-search size cmp-fn key-fn value-fn k)
-          nlast-visited (c/store last-visited this true)]
-      [k* (em/load external-memory v*) nlast-visited])))
+    (binary-search ksize cmp-fn key-fn value-fn k)))
 
+
+(defn ksvs-split [ks ksize vs k key-comparator]
+  (let [;;;[ks1 ks2] (split-with #(< (kc/cmp key-comparator % k) 0) ks)
+        [_ _ _ split-i]  (ksvs-range-search ks ksize vs k key-comparator)
+        [ks1 ks2]   (split-at split-i ks)
+        ;;;[vs1 vs2] (split-at (count ks1) vs)
+        [vs1 vs2]   (split-at split-i vs)
+        ]
+    [[ks1 ks2] [vs1 vs2]]))
+
+
+;;; TODO: we should be able to come up with a more elegant solution instead of ks & vs:
 (defrecord B+TreeInternalNode [b size ks vs]
 
   t/TreeModifyable
@@ -110,9 +121,8 @@
             (ins [{:keys [b ks vs size] :as n} k v]
               (if-not (= k ::inf)
                 ;;; TODO: this split-with is slow, as it works like a sequential search. we should improve this and
-                ;;;   instead implement our own split, doing binary search (like internal-lookup* above):
-                (let [[ks1 ks2] (split-with #(< (kc/cmp key-comparator % k) 0) ks)
-                      [vs1 vs2] (split-at (count ks1) vs)
+                ;;;   instead implement our own split, doing binary search:
+                (let [[[ks1 ks2] [vs1 vs2]] (ksvs-split ks size vs k key-comparator)
                       replace?  (= (kc/cmp key-comparator (first ks2) k) 0)
                       ks2       (if replace? (rest ks2) ks2)
                       vs2       (if replace? (rest vs2) vs2)
@@ -141,8 +151,10 @@
 
   t/TreeLookupable
 
-  (lookup* [this k user-data]
-    (internal-lookup* this k user-data))
+  (lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
+    (let [[k* v* _ _]   (ksvs-range-search ks size vs k key-comparator)
+          nlast-visited (c/store last-visited this true)]
+      [k* (em/load external-memory v*) nlast-visited]))
 
   (lookup-range* [this k user-data]
     (t/lookup* this k user-data))

@@ -28,43 +28,47 @@
 ;;;
 
 ;;; insert a few items manually (vector keys):
-#_(-> (b+tree :b 3)
-    (t/insert [:a 5] 55)
-    (t/insert [:a 9] 99)
-    (t/insert [:a 3] 33)
-    (t/insert [:a 4] 44)
-    (t/insert [:a 2] 22)
-    (t/insert [:a 1] 11)
-    (t/insert [:b 5] 555)
-    (t/insert [:b 9] 999)
-    (t/insert [:b 3] 333)
-    (t/insert [:b 4] 444)
-    (t/insert [:b 2] 222)
-    (t/insert [:b 1] 111)
-    (t/insert [:c 5] 5555)
-    (t/insert [:c 9] 9999)
-    (t/insert [:c 3] 3333)
-    (t/insert [:c 4] 4444)
-    (t/insert [:c 2] 2222)
-    (t/insert [:c 1] 1111)
-    (t/lookup [:a 5])
-    #_clojure.pprint/pprint)
+#_(let [t (b+tree :b 3)
+      r (-> t
+            (t/insert [:a 5] 55)
+            (t/insert [:a 9] 99)
+            (t/insert [:a 3] 33)
+            (t/insert [:a 4] 44)
+            (t/insert [:a 2] 22)
+            (t/insert [:a 1] 11)
+            (t/insert [:b 5] 555)
+            (t/insert [:b 9] 999)
+            (t/insert [:b 3] 333)
+            (t/insert [:b 4] 444)
+            (t/insert [:b 2] 222)
+            (t/insert [:b 1] 111)
+            (t/insert [:c 5] 5555)
+            (t/insert [:c 9] 9999)
+            (t/insert [:c 3] 3333)
+            (t/insert [:c 4] 4444)
+            (t/insert [:c 2] 2222)
+            (t/insert [:c 1] 1111)
+            (t/lookup [:a 5])
+            #_clojure.pprint/pprint)]
+  (println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
+  r)
 
 ;;; insert many generated items (numeric/atomic keys):
-#_(let [kvs (take 10000 (repeatedly #(let [k (-> (rand-int 9000000)
-                                               (+ 1000000))]
-                                     [k (str "v" k)])))
+#_(let [kvs (take 100000 (repeatedly #(let [k (-> (rand-int 9000000)
+                                                (+ 1000000))]
+                                      [k (str "v" k)])))
       ts (atom [])
       t (time (reduce (fn [t [k v]]
                         (let [nt (t/insert t k v)]
                           (swap! ts #(take 10 (conj % nt)))
                           #_(reset! ts t)
                           nt))
-                      (b+tree :b 100)
+                      (b+tree :b 1000)
                       kvs))
       kv1 (first kvs)
       k1 (first kv1)]
   #_(Thread/sleep 120000)
+  (println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
   [kv1 (count @ts) (time (t/lookup t k1))])
 
 ;;; testing range lookup (vector keys):

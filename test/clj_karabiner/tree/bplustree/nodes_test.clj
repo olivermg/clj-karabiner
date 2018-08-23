@@ -7,7 +7,7 @@
             [clj-karabiner.tree.cache :as c]))
 
 
-(deftest internal-node-lookup-logic-1
+#_(deftest internal-node-lookup-logic-1
   (letfn [(build-this []
             (let [ks [     2         6       9             13       15          18       20       22       24          27          30]
                   vs [[1 2] [3 4 5 6] [7 8 9] [10 11 12 13]  [14 15]  [16 17 18]  [19 20]  [21 22]  [23 24]  [25 26 27]  [28 29 30]  [31 32 33]]]
@@ -84,3 +84,15 @@
         (let [[k v] (internal-lookup* this 5 user-data)]
           (is (= :clj-karabiner.tree.bplustree.nodes/inf k))
           (is (= [4 5 6] v)))))))
+
+
+(deftest ksvs-range-search-test
+  (testing "various searches"
+    ;;; TODO: make this a real test
+    (let [ks [     2         6       9             13       15          18       20       22       24          27          30]
+          vs [[1 2] [3 4 5 6] [7 8 9] [10 11 12 13]  [14 15]  [16 17 18]  [19 20]  [21 22]  [23 24]  [25 26 27]  [28 29 30]  [31 32 33]]
+          kc (pkc/partial-key-comparator)
+          results (mapv #(ksvs-range-search ks (count ks) vs % kc)
+                        [-2 0 1 2 3 4 5 6 7 8 9 12 15 18 22 28 30 33 1000])]
+      (clojure.pprint/pprint results)
+      (is (every? vector? results)))))

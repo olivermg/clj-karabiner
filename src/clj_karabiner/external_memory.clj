@@ -19,14 +19,14 @@
 
 
 (defn load [this pobj]
-  (if (satisfies? ExternalMemoryBackedProxy pobj)
+  (if (satisfies? ExternalMemoryBackedProxy pobj)  ;; TODO: make this faster
     (let [k (storage-key pobj)
           d (load* this k)]
       (real-obj pobj d))
     pobj))
 
 (defn save [this robj]
-  (if (satisfies? ExternalMemoryBackedReal robj)
+  (if (satisfies? ExternalMemoryBackedReal robj)  ;; TODO: make this faster
     (let [k (storage-key robj)
           d (storage-data robj)]
       (save* this k d)

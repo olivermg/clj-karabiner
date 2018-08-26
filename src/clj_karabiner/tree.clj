@@ -2,14 +2,14 @@
   (:refer-clojure :rename {load load-clj}))
 
 
-(defprotocol TreeModifyable
+(defprotocol ModifyableNode
   (insert* [this k v user-data]))
 
 (defn insert [this k v]
   (insert* this k v nil))
 
 
-(defprotocol TreeLookupable
+(defprotocol LookupableNode
   (lookup* [this k user-data])
   (lookup-range* [this k user-data]))
 

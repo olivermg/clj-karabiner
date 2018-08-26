@@ -7,12 +7,12 @@
 
 (defrecord B+TreeInternalNodeProxy [key]
 
-  t/TreeModifyable
+  t/ModifyableNode
 
   (insert* [this k v {:keys [external-memory] :as user-data}]
     (t/insert* (em/load external-memory this) k v user-data))
 
-  t/TreeLookupable
+  t/LookupableNode
 
   (lookup* [this k {:keys [external-memory] :as user-data}]
     (t/lookup* (em/load external-memory this) k user-data))
@@ -23,12 +23,12 @@
 
 (defrecord B+TreeLeafNodeProxy [key]
 
-  t/TreeModifyable
+  t/ModifyableNode
 
   (insert* [this k v {:keys [external-memory] :as user-data}]
     (t/insert* (em/load external-memory this) k v user-data))
 
-  t/TreeLookupable
+  t/LookupableNode
 
   (lookup* [this k {:keys [external-memory] :as user-data}]
     (t/lookup* (em/load external-memory this) k user-data))

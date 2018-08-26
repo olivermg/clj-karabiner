@@ -2,6 +2,7 @@
   (:refer-clojure :rename {iterate iterate-clj})
   (:require [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree.nodes :as bpn]
+            [clj-karabiner.tree.swappable :as swap]
             [clj-karabiner.external-memory :as em]
             [clj-karabiner.external-memory.atom :as ema]
             [clj-karabiner.tree.cache :as c]
@@ -10,16 +11,58 @@
             #_[clojure.tools.logging :as log]))
 
 
+#_(defn- lookup-sub [node lookup-fn]
+  (loop [{v :value} (lookup-fn node)]
+    (if (satisfies? t/LookupableNode v)
+      (recur (lookup-fn v))
+      v)))
+
+(defn- user-data [{:keys [key-comparator leaf-neighbours external-memory last-visited] :as this}]
+  {:key-comparator key-comparator
+   :leaf-neighbours leaf-neighbours
+   :external-memory external-memory
+   :last-visited last-visited})
+
+(defrecord B+Tree [b root key-comparator external-memory leaf-neighbours last-visited]
+
+  t/ModifyableNode
+
+  (insert* [this k v _]
+    (let [[n1 k n2 nlnbs nlv] (t/insert* root k v (user-data this))
+          nroot (if (nil? n2)
+                  n1
+                  (let [nn (bpn/->B+TreeInternalNode b 1 [k] [n1 n2])
+                        nnp (em/save external-memory nn)]
+                    nnp))]
+      (->B+Tree b nroot key-comparator external-memory nlnbs nlv)))
+
+  t/LookupableNode
+
+  (lookup* [this k _]
+    (t/lookup* root k (user-data this))
+    #_(lookup-sub root #(t/lookup* % k (user-data this))))
+
+  (lookup-range* [this k _]
+    (t/lookup-range* root k (user-data this))
+    #_(lookup-sub root #(t/lookup-range* % (or k []) (user-data this))))
+
+  bpn/B+TreeLeafNodeIterable
+
+  (iterate-leafnodes [this]
+    (bpn/iterate-leafnodes root)))
+
+
 (defn b+tree [& {:keys [b key-comparator external-memory]}]
   (let [b (or b 1000)
         external-memory (or external-memory (ema/atom-external-memory))
         key-comparator (or key-comparator (kcp/partial-key-comparator))]
-    (bpn/map->B+Tree {:b b
-                      :root (bpn/->B+TreeLeafNode b 0 (sorted-map-by #(kc/cmp key-comparator %1 %2)))
-                      :key-comparator key-comparator
-                      :external-memory external-memory
-                      :leaf-neighbours {}
-                      :last-visited (c/sized-cache 3)})))
+    (map->B+Tree {:b b
+                  :root (-> (bpn/b+tree-leafnode b key-comparator)
+                            (swap/swappable-node))
+                  :key-comparator key-comparator
+                  :external-memory external-memory
+                  :leaf-neighbours {}
+                  :last-visited (c/sized-cache 3)})))
 
 
 
@@ -51,7 +94,7 @@
             (t/lookup [:a 5])
             #_clojure.pprint/pprint)]
   (println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
-  r)
+  (:value r))
 
 ;;; insert many generated items (numeric/atomic keys):
 #_(let [kvs (take 100000 (repeatedly #(let [k (-> (rand-int 9000000)

@@ -11,12 +11,6 @@
             #_[clojure.tools.logging :as log]))
 
 
-#_(defn- lookup-sub [node lookup-fn]
-  (loop [{v :value} (lookup-fn node)]
-    (if (satisfies? t/LookupableNode v)
-      (recur (lookup-fn v))
-      v)))
-
 (defn- user-data [{:keys [key-comparator leaf-neighbours external-memory last-visited] :as this}]
   {:key-comparator key-comparator
    :leaf-neighbours leaf-neighbours
@@ -31,20 +25,16 @@
     (let [[n1 k n2 nlnbs nlv] (t/insert* root k v (user-data this))
           nroot (if (nil? n2)
                   n1
-                  (let [nn  (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
-                        nnp (em/save external-memory nn)]
-                    nnp))]
+                  (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1))]
       (->B+Tree b nroot key-comparator external-memory nlnbs nlv)))
 
   t/LookupableNode
 
   (lookup* [this k _]
-    (t/lookup* root k (user-data this))
-    #_(lookup-sub root #(t/lookup* % k (user-data this))))
+    (t/lookup* root k (user-data this)))
 
   (lookup-range* [this k _]
-    (t/lookup-range* root k (user-data this))
-    #_(lookup-sub root #(t/lookup-range* % (or k []) (user-data this))))
+    (t/lookup-range* root k (user-data this)))
 
   bpn/B+TreeLeafNodeIterable
 

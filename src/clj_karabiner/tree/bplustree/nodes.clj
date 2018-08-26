@@ -98,11 +98,10 @@
 
 (defn lookup-local [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
   (let [[k* v* _ _]   (ksvs-range-search ks size vs k key-comparator)
-        nlast-visited (c/store last-visited this true)
-        value (em/load external-memory v*)]
+        nlast-visited (c/store last-visited this true)]
     {:actual-k k*
-     :value value
-     :values [value]
+     :value v*
+     :values [v*]
      :user-data (assoc user-data :last-visited nlast-visited)}))
 
 
@@ -156,12 +155,9 @@
                                  (-> (ins this nk n1)
                                      (ins childk n2)))]
         (if (>= (-> nn :size) b)
-          (let [[n1 nk n2] (split nn)
-                n1p (em/save external-memory n1)
-                n2p (em/save external-memory n2)]
-            [n1p nk n2p nlnbs lv])
-          (let [nnp (em/save external-memory nn)]
-            [nnp nil nil nlnbs lv])))))
+          (let [[n1 nk n2] (split nn)]
+            [n1 nk n2 nlnbs lv])
+          [nn nil nil nlnbs lv]))))
 
   t/LookupableNode
 
@@ -243,12 +239,9 @@
 
       (let [nn (ins k v)]
         (if (>= (-> nn :size) b)
-          (let [[n1 nk n2 nlnbs] (split nn)
-                n1p (em/save external-memory n1)
-                n2p (em/save external-memory n2)]
-            [n1p nk n2p nlnbs last-visited])
-          (let [nnp (em/save external-memory nn)]
-            [nnp nil nil (insert-leaf-neighbours nn) last-visited])))))
+          (let [[n1 nk n2 nlnbs] (split nn)]
+            [n1 nk n2 nlnbs last-visited])
+          [nn nil nil (insert-leaf-neighbours nn) last-visited]))))
 
   t/LookupableNode
 

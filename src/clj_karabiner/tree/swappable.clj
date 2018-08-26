@@ -2,7 +2,12 @@
   (:require [clj-karabiner.tree :as t]))
 
 
-(defrecord SwappableNode [node]
+(defrecord SwappableNode [node-id node]
+
+  t/Node
+
+  (id [this]
+    node-id)
 
   t/ModifyableNode
 

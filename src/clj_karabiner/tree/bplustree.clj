@@ -31,7 +31,7 @@
     (let [[n1 k n2 nlnbs nlv] (t/insert* root k v (user-data this))
           nroot (if (nil? n2)
                   n1
-                  (let [nn (bpn/->B+TreeInternalNode b 1 [k] [n1 n2])
+                  (let [nn  (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
                         nnp (em/save external-memory nn)]
                     nnp))]
       (->B+Tree b nroot key-comparator external-memory nlnbs nlv)))
@@ -57,7 +57,7 @@
         external-memory (or external-memory (ema/atom-external-memory))
         key-comparator (or key-comparator (kcp/partial-key-comparator))]
     (map->B+Tree {:b b
-                  :root (-> (bpn/b+tree-leafnode b key-comparator)
+                  :root (-> (bpn/b+tree-leafnode b :key-comparator key-comparator)
                             (swap/swappable-node))
                   :key-comparator key-comparator
                   :external-memory external-memory
@@ -97,7 +97,7 @@
   (:value r))
 
 ;;; insert many generated items (numeric/atomic keys):
-#_(let [kvs (take 100000 (repeatedly #(let [k (-> (rand-int 9000000)
+#_(let [kvs (take 10000 (repeatedly #(let [k (-> (rand-int 9000000)
                                                 (+ 1000000))]
                                       [k (str "v" k)])))
       ts (atom [])

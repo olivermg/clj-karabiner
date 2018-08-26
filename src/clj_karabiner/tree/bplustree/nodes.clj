@@ -106,8 +106,16 @@
      :user-data (assoc user-data :last-visited nlast-visited)}))
 
 
+(declare b+tree-internalnode b+tree-leafnode)
+
+
 ;;; TODO: we should be able to come up with a more elegant solution instead of ks & vs:
-(defrecord B+TreeInternalNode [b size ks vs]
+(defrecord B+TreeInternalNode [id b size ks vs]
+
+  t/Node
+
+  (id [this]
+    (:id this))
 
   t/ModifyableNode
 
@@ -118,8 +126,8 @@
                     [ks1 nk]        [(butlast ks1) (last ks1)]
                     [vs1 vs2a vs2b] (partition-all partition-size vs)
                     vs2             (concat vs2a vs2b)
-                    nn1             (->B+TreeInternalNode b (dec partition-size) ks1 vs1)
-                    nn2             (->B+TreeInternalNode b (- partition-size (rem size 2)) ks2 vs2)]
+                    nn1             (b+tree-internalnode b :ks ks1 :vs vs1 :size (dec partition-size))
+                    nn2             (b+tree-internalnode b :ks ks2 :vs vs2 :size (- partition-size (rem size 2)))]
                 [nn1 nk nn2]))
 
             (ins [{:keys [b ks vs size] :as n} k v]
@@ -133,10 +141,10 @@
                       nsize     (if replace? size (inc size))
                       nks       (concat ks1 [k] ks2)
                       nvs       (concat vs1 [v] vs2)
-                      nn        (->B+TreeInternalNode b nsize nks nvs)]
+                      nn        (b+tree-internalnode b :ks nks :vs nvs :size nsize)]
                   nn)
                 (let [nvs (-> vs butlast (concat [v]))
-                      nn  (->B+TreeInternalNode b size ks nvs)]
+                      nn  (b+tree-internalnode b :ks ks :vs nvs :size size)]
                   nn)))]
 
       (let [{childk :actual-k
@@ -171,7 +179,21 @@
     (lazy-seq (mapcat iterate-leafnodes vs))))
 
 
-(defrecord B+TreeLeafNode [b size m]
+(defn b+tree-internalnode [b & {:keys [ks vs size]}]
+  (let [id (hash {:b b :ks ks :vs vs})
+        size (or size (count ks))]
+    (map->B+TreeInternalNode {:id id
+                              :ks ks
+                              :vs vs
+                              :size size})))
+
+
+(defrecord B+TreeLeafNode [id b size m]
+
+  t/Node
+
+  (id [this]
+    (:id this))
 
   t/ModifyableNode
 
@@ -208,15 +230,15 @@
                     m2 (apply dissoc m ks1)
                     n1size partition-size
                     n2size (- partition-size (rem size 2))
-                    n1  (->B+TreeLeafNode b n1size m1)
-                    n2  (->B+TreeLeafNode b n2size m2)
+                    n1 (b+tree-leafnode b :m m1 :size n1size)
+                    n2 (b+tree-leafnode b :m m2 :size n2size)
                     nleafnbs (update-leaf-neighbours n1 n2)]
                 [n1 (last ks1) n2 nleafnbs]))
 
             (ins [k v]
               (let [nsize (if (contains? m k) size (inc size))
                     nm  (assoc m k v)
-                    nn  (->B+TreeLeafNode b nsize nm)]
+                    nn  (b+tree-leafnode b :m nm :size nsize)]
                 nn))]
 
       (let [nn (ins k v)]
@@ -275,7 +297,11 @@
     [this]))
 
 
-(defn b+tree-leafnode [b key-comparator]
-  (map->B+TreeLeafNode {:b b
-                        :size 0
-                        :m (sorted-map-by #(kc/cmp key-comparator %1 %2))}))
+(defn b+tree-leafnode [b & {:keys [m key-comparator size]}]
+  (let [m (or m (sorted-map-by #(kc/cmp key-comparator %1 %2)))
+        id (hash {:b b :m m})
+        size (or size (count m))]
+    (map->B+TreeLeafNode {:id id
+                          :b b
+                          :size 0
+                          :m m})))

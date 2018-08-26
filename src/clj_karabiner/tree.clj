@@ -2,6 +2,10 @@
   (:refer-clojure :rename {load load-clj}))
 
 
+(defprotocol Node
+  (id [this]))
+
+
 (defprotocol ModifyableNode
   (insert* [this k v user-data]))
 

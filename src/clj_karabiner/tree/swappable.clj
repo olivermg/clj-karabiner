@@ -2,6 +2,9 @@
   (:require [clj-karabiner.tree :as t]))
 
 
+(declare swappable-node)
+
+
 (defrecord SwappableNode [node-id node]
 
   t/Node
@@ -12,7 +15,11 @@
   t/ModifyableNode
 
   (insert* [this k v user-data]
-    (t/insert* node k v user-data))
+    (let [[n1 nk n2 lnbs lv] (t/insert* node k v user-data)
+          sn1 (swappable-node n1)
+          sn2 (and n2 (swappable-node n2))]
+      #_(println "SWAPPABLE INSERT" (:id n1) (:id n2))
+      [sn1 nk sn2 lnbs lv]))
 
   t/LookupableNode
 
@@ -24,4 +31,5 @@
 
 
 (defn swappable-node [node]
-  (map->SwappableNode {:node node}))
+  (map->SwappableNode {:node-id (t/id node)
+                       :node node}))

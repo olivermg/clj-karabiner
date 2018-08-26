@@ -131,8 +131,6 @@
 
             (ins [{:keys [b ks vs size] :as n} k v]
               (if-not (= k ::inf)
-                ;;; TODO: this split-with is slow, as it works like a sequential search. we should improve this and
-                ;;;   instead implement our own split, doing binary search:
                 (let [[[ks1 ks2] [vs1 vs2]] (ksvs-split ks size vs k key-comparator)
                       replace?  (= (kc/cmp key-comparator (first ks2) k) 0)
                       ks2       (if replace? (rest ks2) ks2)
@@ -148,8 +146,9 @@
 
       (let [{childk :actual-k
              childv :value
-             {lv :last-visited} :user-data} (lookup-local this k user-data)
-            [n1 nk n2 nlnbs]   (t/insert* childv k v user-data)
+             {lv :last-visited :as nuser-data} :user-data}
+            (lookup-local this k user-data)
+            [n1 nk n2 nlnbs]   (t/insert* childv k v nuser-data)
             nn                 (if (nil? n2)
                                  (ins this childk n1)
                                  (-> (ins this nk n1)

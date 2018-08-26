@@ -25,7 +25,8 @@
     (let [[n1 k n2 nlnbs nlv] (t/insert* root k v (user-data this))
           nroot (if (nil? n2)
                   n1
-                  (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1))]
+                  (-> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
+                      (swap/swappable-node)))]
       (->B+Tree b nroot key-comparator external-memory nlnbs nlv)))
 
   t/LookupableNode

@@ -1,7 +1,7 @@
 (ns clj-karabiner.tree.bplustree.nodes
   (:refer-clojure :rename {iterate iterate-clj})
   (:require [clj-karabiner.tree :as t]
-            [clj-karabiner.external-memory :as em]
+            #_[clj-karabiner.external-memory :as em]
             [clj-karabiner.tree.cache :as c]
             [clj-karabiner.keycomparator :as kc]
             [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
@@ -96,7 +96,7 @@
     [[ks1 ks2] [vs1 vs2]]))
 
 
-(defn lookup-local [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
+(defn lookup-local [{:keys [size ks vs] :as this} k {:keys [key-comparator last-visited] :as user-data}]
   (let [[k* v* _ _]   (ksvs-range-search ks size vs k key-comparator)
         nlast-visited (c/store last-visited this true)]
     {:actual-k k*
@@ -118,7 +118,7 @@
 
   t/ModifyableNode
 
-  (insert* [this k v {:keys [key-comparator external-memory] :as user-data}]
+  (insert* [this k v {:keys [key-comparator] :as user-data}]
     (letfn [(split [{:keys [b ks vs size] :as n}]
               (let [partition-size  (-> size (/ 2) Math/ceil int)
                     [ks1 ks2]       (partition-all partition-size ks)
@@ -161,7 +161,7 @@
 
   t/LookupableNode
 
-  (lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator external-memory last-visited] :as user-data}]
+  (lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator last-visited] :as user-data}]
     (let [{child :value
            nuser-data :user-data} (lookup-local this k user-data)]
       (t/lookup* child k nuser-data)))
@@ -193,7 +193,7 @@
 
   t/ModifyableNode
 
-  (insert* [this k v {:keys [leaf-neighbours external-memory last-visited] :as user-data}]
+  (insert* [this k v {:keys [leaf-neighbours last-visited] :as user-data}]
     (letfn [(insert-leaf-neighbours [n1]
               (let [{pleaf :prev nleaf :next} (get leaf-neighbours this)
                     {ppleaf :prev}            (when-not (nil? pleaf)

@@ -2,7 +2,7 @@
   (:refer-clojure :rename {iterate iterate-clj})
   (:require [clj-karabiner.tree :as t]
             #_[clj-karabiner.external-memory :as em]
-            [clj-karabiner.tree.cache :as c]
+            [clj-karabiner.cache :as c]
             [clj-karabiner.keycomparator :as kc]
             [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
             #_[clojure.tools.logging :as log]))

@@ -1,6 +1,7 @@
 (ns clj-karabiner.fact-database
   (:refer-clojure :rename {load load-clj})
-  (:require [clj-karabiner.tree :as t]
+  (:require [taoensso.nippy :as n]
+            [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree :as bp]
             [clj-karabiner.external-memory.atom :as ema]
             [clj-karabiner.fact-database.dbvalue :as dbv]

@@ -12,6 +12,7 @@
                  [com.cognitect/transit-clj "0.8.309"
                   ;;;:exclusions [com.fasterxml.jackson.core/jackson-core]
                   ]
+                 [com.taoensso/nippy "2.14.0"]
 
                  [com.taoensso/carmine "2.18.1"]
                  #_[spootnik/kinsky "0.1.22"]

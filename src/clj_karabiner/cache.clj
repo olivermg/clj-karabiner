@@ -4,5 +4,9 @@
 
 (defprotocol Caching
   (store [this k v])
-  (lookup [this k])
+  (lookup* [this k not-found])
   (keys [this]))
+
+
+(defn lookup [this k & [not-found]]
+  (lookup* this k not-found))

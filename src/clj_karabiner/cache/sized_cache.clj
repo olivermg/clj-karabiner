@@ -1,5 +1,5 @@
-(ns clj-karabiner.tree.cache
-  (:refer-clojure :rename {keys keys-clj}))
+(ns clj-karabiner.cache.sized-cache
+  (:require [clj-karabiner.cache :as c]))
 
 
 (deftype DedupList [l s maxlen curlen]
@@ -50,15 +50,9 @@
   (->DedupList '() #{} maxlen 0))
 
 
-(defprotocol Caching
-  (store [this k v])
-  (lookup [this k])
-  (keys [this]))
-
-
 (defrecord SizedCache [l m]
 
-  Caching
+  c/Caching
 
   (store [this k v]
     (let [nl (conj l k)]

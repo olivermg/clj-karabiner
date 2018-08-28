@@ -5,7 +5,7 @@
             [clj-karabiner.tree.swappable :as swap]
             [clj-karabiner.external-memory :as em]
             [clj-karabiner.external-memory.atom :as ema]
-            [clj-karabiner.tree.cache :as c]
+            [clj-karabiner.cache.sized-cache :as sc]
             [clj-karabiner.keycomparator :as kc]
             [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
             #_[clojure.tools.logging :as log]))
@@ -53,7 +53,7 @@
                   :key-comparator key-comparator
                   :external-memory external-memory
                   :leaf-neighbours {}
-                  :last-visited (c/sized-cache 3)})))
+                  :last-visited (sc/sized-cache 3)})))
 
 
 

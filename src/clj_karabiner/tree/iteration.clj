@@ -1,5 +1,5 @@
 (ns clj-karabiner.tree.iteration
-  (:require [clj-karabiner.tree.cache :as c]))
+  (:require [clj-karabiner.cache :as c]))
 
 
 (defrecord IterationResult [leaf-neighbours last-visited])

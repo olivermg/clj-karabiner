@@ -12,7 +12,7 @@
     (swap! m #(select-keys (assoc % k v) @l)))
 
   (lookup* [this k not-found]
-    (let [v (get m k ::not-found)]
+    (let [v (get @m k ::not-found)]
       (if-not (= v ::not-found)
         (do (swap! l #(conj % k))
             v)

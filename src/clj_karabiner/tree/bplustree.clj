@@ -3,7 +3,7 @@
   (:require [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree.nodes :as bpn]
             [clj-karabiner.tree.swappable :as swap]
-            #_[clj-karabiner.kvstore :as kvs]
+            [clj-karabiner.kvstore :as kvs]
             [clj-karabiner.kvstore.atom :as kvsa]
             [clj-karabiner.kvstore.mutable-cache :as kvsmc]
             [clj-karabiner.kvstore.chain :as kvsch]
@@ -22,6 +22,7 @@
   t/ModifyableNode
 
   (insert* [this k v _]
+    (println "=== INSERT* ===" k)
     (let [[n1 k n2 nlnbs] (t/insert* root k v (user-data this))
           nroot (if (nil? n2)
                   n1
@@ -36,6 +37,7 @@
   t/LookupableNode
 
   (lookup* [this k _]
+    (println "=== LOOKUP* ===" k)
     (t/lookup* root k (user-data this)))
 
   (lookup-range* [this k _]
@@ -48,7 +50,7 @@
 
 
 (defn b+tree [& {:keys [b key-comparator node-cache node-storage]}]
-  (let [b (or b 1000)
+  (let [b              (or b 1000)
         node-cache     (or node-cache (kvsmc/mutable-caching-kvstore 100))
         node-storage   (or node-storage (kvsa/atom-kvstore))
         node-kvstore   (kvsch/kvstore-chain node-cache node-storage)
@@ -67,8 +69,8 @@
 ;;;
 
 ;;; insert a few items manually (vector keys):
-#_(let [t (b+tree :b 3)
-      r (-> t
+#_(let [t (-> (b+tree :b 3
+                    :node-cache (kvsmc/mutable-caching-kvstore 1))
             (t/insert [:a 5] 55)
             (t/insert [:a 9] 99)
             (t/insert [:a 3] 33)
@@ -86,11 +88,17 @@
             (t/insert [:c 3] 3333)
             (t/insert [:c 4] 4444)
             (t/insert [:c 2] 2222)
-            (t/insert [:c 1] 1111)
-            (t/lookup [:a 5])
-            #_clojure.pprint/pprint)]
+            (t/insert [:c 1] 1111))
+      r1 (t/lookup t [:a 5])
+      r2 (t/lookup t [:c 4])
+      r3 (t/lookup t [:b 1])]
   (println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
-  (:value r))
+  (map (fn [r] (:value r))
+       [r1 r2 r3])
+  #_(-> t :node-kvstore :kvstores first :m deref keys)
+  #_(let [nid (-> t :root :id)
+        nc (-> t :node-kvstore)]
+    (kvs/lookup nc nid)))
 
 ;;; insert many generated items (numeric/atomic keys):
 #_(let [kvs (take 10000 (repeatedly #(let [k (-> (rand-int 9000000)

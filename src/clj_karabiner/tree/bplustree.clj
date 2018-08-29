@@ -93,8 +93,7 @@
       r2 (t/lookup t [:c 4])
       r3 (t/lookup t [:b 1])]
   (println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
-  (map (fn [r] (:value r))
-       [r1 r2 r3]))
+  (map :value [r1 r2 r3]))
 
 ;;; insert many generated items (numeric/atomic keys):
 #_(let [kvs (take 10000 (repeatedly #(let [k (-> (rand-int 9000000)
@@ -128,8 +127,8 @@
       t2 (-> (t/insert t1 [:b "y" 3] "____")
              time)]
   #_(clojure.pprint/pprint t2)
-  [(time (t/lookup-range t1 [:b "y"]))
-   (time (t/lookup-range t2 [:b "y"]))])
+  [(time (:values (t/lookup-range t1 [:b "y"])))
+   (time (:values (t/lookup-range t2 [:b "y"])))])
 
 
 

@@ -159,14 +159,17 @@
 
   t/LookupableNode
 
-  (lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator] :as user-data}]
+  (lookup* [this k user-data]
     #_(println " => LOOKUP* INTERNAL" k)
     (let [{child :value
            nuser-data :user-data} (lookup-local this k user-data)]
       (t/lookup* child k nuser-data)))
 
   (lookup-range* [this k user-data]
-    (t/lookup* this k user-data))
+    #_(println " => LOOKUP-RANGE* INTERNAL" k)
+    (let [{child :value
+           nuser-data :user-data} (lookup-local this k user-data)]
+      (t/lookup-range* child k nuser-data)))
 
   B+TreeLeafNodeIterable
 
@@ -255,6 +258,7 @@
        :user-data user-data}))
 
   (lookup-range* [this k {:keys [key-comparator leaf-neighbours] :as user-data}]
+    #_(println " => LOOKUP-RANGE* LEAF" k)
     (when (>= (kc/cmp key-comparator k (-> m keys first)) 0)
       (let [matching-keys (->> (keys m)
                                (filter #(= (kc/cmp key-comparator % k) 0)))

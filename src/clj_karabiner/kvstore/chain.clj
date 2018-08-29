@@ -16,9 +16,9 @@
       (if store
         (let [v (kvs/lookup store k ::not-found)]
           (if-not (= v ::not-found)
-            (do (println "HIT in store" i "for key" k)
+            (do #_(println "HIT in store" i "for key" k)
                 v)
-            (do (println "MISS in store" i "for key" k)
+            (do #_(println "MISS in store" i "for key" k)
                 (recur stores (inc i)))))
         not-found))))
 

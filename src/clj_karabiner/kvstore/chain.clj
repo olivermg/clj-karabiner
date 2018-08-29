@@ -11,12 +11,15 @@
     (dorun (map #(kvs/store % k v) kvstores)))
 
   (lookup* [this k not-found]
-    (loop [[store & stores] kvstores]
+    (loop [[store & stores] kvstores
+           i 0]
       (if store
         (let [v (kvs/lookup store k ::not-found)]
           (if-not (= v ::not-found)
-            v
-            (recur stores)))
+            (do (println "HIT in store" i "for key" k)
+                v)
+            (do (println "MISS in store" i "for key" k)
+                (recur stores (inc i)))))
         not-found))))
 
 

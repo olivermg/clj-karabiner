@@ -3,9 +3,10 @@
   (:require [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree.nodes :as bpn]
             [clj-karabiner.tree.swappable :as swap]
-            [clj-karabiner.external-memory :as em]
-            [clj-karabiner.external-memory.atom :as ema]
-            [clj-karabiner.cache.sized-mutable-cache :as sc]
+            #_[clj-karabiner.kvstore :as kvs]
+            [clj-karabiner.kvstore.atom :as kvsa]
+            [clj-karabiner.kvstore.mutable-cache :as kvsmc]
+            [clj-karabiner.kvstore.chain :as kvsch]
             [clj-karabiner.keycomparator :as kc]
             [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
             #_[clojure.tools.logging :as log]))
@@ -16,7 +17,7 @@
    :leaf-neighbours leaf-neighbours
    :node-swapper node-swapper})
 
-(defrecord B+Tree [b root key-comparator leaf-neighbours node-swapper]
+(defrecord B+Tree [b root key-comparator leaf-neighbours node-kvstore]
 
   t/ModifyableNode
 
@@ -24,13 +25,13 @@
     (let [[n1 k n2 nlnbs] (t/insert* root k v (user-data this))
           nroot (if (nil? n2)
                   n1
-                  (-> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
-                      (swap/swappable-node)))]
+                  (->> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
+                       (swap/swappable-node node-kvstore)))]
       (map->B+Tree {:b b
                     :root nroot
                     :key-comparator key-comparator
                     :leaf-neighbours nlnbs
-                    :node-swapper node-swapper})))
+                    :node-kvstore node-kvstore})))
 
   t/LookupableNode
 
@@ -48,16 +49,16 @@
 
 (defn b+tree [& {:keys [b key-comparator node-cache node-storage]}]
   (let [b (or b 1000)
-        node-storage   (or node-storage (ema/atom-external-memory))
-        node-cache     (or node-cache (sc/sized-mutable-cache 100))
-        node-swapper   (swap/node-swapper node-cache node-storage)
+        node-cache     (or node-cache (kvsmc/mutable-caching-kvstore 100))
+        node-storage   (or node-storage (kvsa/atom-kvstore))
+        node-kvstore   (kvsch/kvstore-chain node-cache node-storage)
         key-comparator (or key-comparator (kcp/partial-key-comparator))]
     (map->B+Tree {:b b
-                  :root (-> (bpn/b+tree-leafnode b :key-comparator key-comparator)
-                            (swap/swappable-node))
+                  :root (->> (bpn/b+tree-leafnode b :key-comparator key-comparator)
+                             (swap/swappable-node node-kvstore))
                   :key-comparator key-comparator
                   :leaf-neighbours {}
-                  :node-swapper node-swapper})))
+                  :node-kvstore node-kvstore})))
 
 
 

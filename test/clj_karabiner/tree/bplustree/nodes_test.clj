@@ -3,7 +3,7 @@
             [clj-karabiner.tree.bplustree.nodes :refer :all]
             [clj-karabiner.tree.bplustree :as bpt]
             [clj-karabiner.keycomparator.partial-keycomparator :as pkc]
-            [clj-karabiner.external-memory.atom :as aem]
+            #_[clj-karabiner.external-memory.atom :as aem]
             #_[clj-karabiner.cache :as c]
             [clojure.pprint]))
 

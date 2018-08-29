@@ -3,7 +3,6 @@
   (:require [taoensso.nippy :as n]
             [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree :as bp]
-            [clj-karabiner.external-memory.atom :as ema]
             [clj-karabiner.fact-database.dbvalue :as dbv]
             [clj-karabiner.storage-backend :as sb]))
 

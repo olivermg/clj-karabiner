@@ -11,23 +11,26 @@
             #_[clojure.tools.logging :as log]))
 
 
-(defn- user-data [{:keys [key-comparator leaf-neighbours external-memory last-visited] :as this}]
+(defn- user-data [{:keys [key-comparator leaf-neighbours node-swapper] :as this}]
   {:key-comparator key-comparator
    :leaf-neighbours leaf-neighbours
-   :external-memory external-memory
-   :last-visited last-visited})
+   :node-swapper node-swapper})
 
-(defrecord B+Tree [b root key-comparator external-memory leaf-neighbours last-visited]
+(defrecord B+Tree [b root key-comparator leaf-neighbours node-swapper]
 
   t/ModifyableNode
 
   (insert* [this k v _]
-    (let [[n1 k n2 nlnbs nlv] (t/insert* root k v (user-data this))
+    (let [[n1 k n2 nlnbs] (t/insert* root k v (user-data this))
           nroot (if (nil? n2)
                   n1
                   (-> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
                       (swap/swappable-node)))]
-      (->B+Tree b nroot key-comparator external-memory nlnbs nlv)))
+      (map->B+Tree {:b b
+                    :root nroot
+                    :key-comparator key-comparator
+                    :leaf-neighbours nlnbs
+                    :node-swapper node-swapper})))
 
   t/LookupableNode
 
@@ -43,17 +46,18 @@
     (bpn/iterate-leafnodes root)))
 
 
-(defn b+tree [& {:keys [b key-comparator external-memory]}]
+(defn b+tree [& {:keys [b key-comparator node-cache node-storage]}]
   (let [b (or b 1000)
-        external-memory (or external-memory (ema/atom-external-memory))
+        node-storage   (or node-storage (ema/atom-external-memory))
+        node-cache     (or node-cache (sc/sized-mutable-cache 100))
+        node-swapper   (swap/node-swapper node-cache node-storage)
         key-comparator (or key-comparator (kcp/partial-key-comparator))]
     (map->B+Tree {:b b
                   :root (-> (bpn/b+tree-leafnode b :key-comparator key-comparator)
                             (swap/swappable-node))
                   :key-comparator key-comparator
-                  :external-memory external-memory
                   :leaf-neighbours {}
-                  :last-visited (sc/sized-mutable-cache 3)})))
+                  :node-swapper node-swapper})))
 
 
 

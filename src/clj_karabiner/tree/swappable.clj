@@ -22,6 +22,11 @@
   nil)
 
 
+(defn node-swapper [cache storage]
+  (map->NodeSwapper {:cache cache
+                     :storage storage}))
+
+
 (declare swappable-node)
 
 

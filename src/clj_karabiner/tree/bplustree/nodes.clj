@@ -96,13 +96,12 @@
     [[ks1 ks2] [vs1 vs2]]))
 
 
-(defn lookup-local [{:keys [size ks vs] :as this} k {:keys [key-comparator last-visited] :as user-data}]
-  (let [[k* v* _ _]   (ksvs-range-search ks size vs k key-comparator)
-        nlast-visited (c/store last-visited this true)]
+(defn lookup-local [{:keys [size ks vs] :as this} k {:keys [key-comparator] :as user-data}]
+  (let [[k* v* _ _]   (ksvs-range-search ks size vs k key-comparator)]
     {:actual-k k*
      :value v*
      :values [v*]
-     :user-data (assoc user-data :last-visited nlast-visited)}))
+     :user-data user-data}))
 
 
 (declare b+tree-internalnode b+tree-leafnode)
@@ -146,21 +145,20 @@
 
       (let [{childk :actual-k
              childv :value
-             {lv :last-visited :as nuser-data} :user-data}
-            (lookup-local this k user-data)
-            [n1 nk n2 nlnbs]   (t/insert* childv k v nuser-data)
-            nn                 (if (nil? n2)
-                                 (ins this childk n1)
-                                 (-> (ins this nk n1)
-                                     (ins childk n2)))]
+             nuser-data :user-data} (lookup-local this k user-data)
+            [n1 nk n2 nlnbs]        (t/insert* childv k v nuser-data)
+            nn                      (if (nil? n2)
+                                      (ins this childk n1)
+                                      (-> (ins this nk n1)
+                                          (ins childk n2)))]
         (if (>= (-> nn :size) b)
           (let [[n1 nk n2] (split nn)]
-            [n1 nk n2 nlnbs lv])
-          [nn nil nil nlnbs lv]))))
+            [n1 nk n2 nlnbs])
+          [nn nil nil nlnbs]))))
 
   t/LookupableNode
 
-  (lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator last-visited] :as user-data}]
+  (lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator] :as user-data}]
     (let [{child :value
            nuser-data :user-data} (lookup-local this k user-data)]
       (t/lookup* child k nuser-data)))
@@ -192,7 +190,7 @@
 
   t/ModifyableNode
 
-  (insert* [this k v {:keys [leaf-neighbours last-visited] :as user-data}]
+  (insert* [this k v {:keys [leaf-neighbours] :as user-data}]
     (letfn [(insert-leaf-neighbours [n1]
               (let [{pleaf :prev nleaf :next} (get leaf-neighbours this)
                     {ppleaf :prev}            (when-not (nil? pleaf)
@@ -239,49 +237,33 @@
       (let [nn (ins k v)]
         (if (>= (-> nn :size) b)
           (let [[n1 nk n2 nlnbs] (split nn)]
-            [n1 nk n2 nlnbs last-visited])
-          [nn nil nil (insert-leaf-neighbours nn) last-visited]))))
+            [n1 nk n2 nlnbs])
+          [nn nil nil (insert-leaf-neighbours nn)]))))
 
   t/LookupableNode
 
-  (lookup* [this k {:keys [last-visited] :as user-data}]
+  (lookup* [this k user-data]
     (let [value (get m k)]
       {:actual-k k
        :value value
        :values [value]
-       :user-data {:last-visited (c/store last-visited this true)}})
-    #_[k (get m k) (c/store last-visited this true)])
+       :user-data user-data}))
 
-  (lookup-range* [this k {:keys [key-comparator leaf-neighbours last-visited] :as user-data}]
+  (lookup-range* [this k {:keys [key-comparator leaf-neighbours] :as user-data}]
     (when (>= (kc/cmp key-comparator k (-> m keys first)) 0)
       (let [matching-keys (->> (keys m)
                                (filter #(= (kc/cmp key-comparator % k) 0)))
-            nlast-visited (c/store last-visited this true)
-            {restvs :values
-             {restvisited :last-visited} :user-data}
-            (when-let [next (-> (get leaf-neighbours this) :next)]
-              (t/lookup-range* next k (assoc user-data
-                                             :last-visited nlast-visited)))
+            {restvs :values} (when-let [next (-> (get leaf-neighbours this) :next)]
+                               (t/lookup-range* next k user-data))
             values (lazy-seq
                     (concat (-> (select-keys m matching-keys)
                                 vals
                                 vec)
                             restvs))]
-        ;;; TODO: we don't really need k in this case, as it is only needed for when we get
-        ;;;   invoked by insert. as this never happens for lookup-range, we could get rid of
-        ;;;   k (i.e. result in 2-tuple vector form). however, currently lookup* (below) relies
-        ;;;   on the format to be a 2-tuple, so we leave it like that for the moment:
         {:actual-k k
          :values values
          :value (first values)
-         :user-data {:last-visited (or restvisited nlast-visited)}}
-        #_[k
-         (lazy-seq
-          (concat (-> (select-keys m matching-keys)
-                      vals
-                      vec)
-                  restvs))
-         (or restvisited nlast-visited)])))
+         :user-data user-data})))
 
   B+TreeLeafNodeIterable
 

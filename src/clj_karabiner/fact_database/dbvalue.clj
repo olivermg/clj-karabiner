@@ -29,7 +29,7 @@
                              (map (fn [[e a v t :as fact]]
                                     {:pre [(not (nil? e))
                                            (not (nil? a))]}
-                                    (t/lookup ea [e a])))
+                                    (:value (t/lookup ea [e a]))))
                              (reduce (fn [s [e a v t :as fact]]
                                        (assoc s [e a] t))
                                      {}))]
@@ -41,13 +41,13 @@
                (mapv not))
 
       [false false false] (throw (ex-info "lookup without index key not supported" {:q q}))
-      [false false true ] (remove-out-of-date-facts (t/lookup-range vaet [v]))
-      [false true  false] (t/lookup-range aevt [a])
-      [false true  true ] (remove-out-of-date-facts (t/lookup-range vaet [v a]))
-      [true  false false] (t/lookup-range eavt [e])
+      [false false true ] (remove-out-of-date-facts (:values (t/lookup-range vaet [v])))
+      [false true  false] (:values (t/lookup-range aevt [a]))
+      [false true  true ] (remove-out-of-date-facts (:values (t/lookup-range vaet [v a])))
+      [true  false false] (:values (t/lookup-range eavt [e]))
       [true  false true ] (throw (ex-info "lookup of type [e v] not supported" {:q q}))
-      [true  true  false] (t/lookup-range eavt [e a])
-      [true  true  true ] (remove-out-of-date-facts (t/lookup-range eavt [e a v])))))
+      [true  true  false] (:values (t/lookup-range eavt [e a]))
+      [true  true  true ] (remove-out-of-date-facts (:values (t/lookup-range eavt [e a v]))))))
 
 
 (defn query [this [e a v :as q] & {:keys [project-full-entities?]

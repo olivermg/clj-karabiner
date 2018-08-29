@@ -118,6 +118,7 @@
   t/ModifyableNode
 
   (insert* [this k v {:keys [key-comparator] :as user-data}]
+    #_(println " => INSERT* INTERNAL" k)
     (letfn [(split [{:keys [b ks vs size] :as n}]
               (let [partition-size  (-> size (/ 2) Math/ceil int)
                     [ks1 ks2]       (partition-all partition-size ks)
@@ -159,6 +160,7 @@
   t/LookupableNode
 
   (lookup* [{:keys [size ks vs] :as this} k {:keys [key-comparator] :as user-data}]
+    #_(println " => LOOKUP* INTERNAL" k)
     (let [{child :value
            nuser-data :user-data} (lookup-local this k user-data)]
       (t/lookup* child k nuser-data)))
@@ -176,9 +178,10 @@
   (let [id (hash {:b b :ks ks :vs vs})
         size (or size (count ks))]
     (map->B+TreeInternalNode {:id id
+                              :b b
+                              :size size
                               :ks ks
-                              :vs vs
-                              :size size})))
+                              :vs vs})))
 
 
 (defrecord B+TreeLeafNode [id b size m]
@@ -191,6 +194,7 @@
   t/ModifyableNode
 
   (insert* [this k v {:keys [leaf-neighbours] :as user-data}]
+    #_(println " => INSERT* LEAF" k)
     (letfn [(insert-leaf-neighbours [n1]
               (let [{pleaf :prev nleaf :next} (get leaf-neighbours this)
                     {ppleaf :prev}            (when-not (nil? pleaf)
@@ -243,6 +247,7 @@
   t/LookupableNode
 
   (lookup* [this k user-data]
+    #_(println " => LOOKUP* LEAF" k)
     (let [value (get m k)]
       {:actual-k k
        :value value
@@ -277,5 +282,5 @@
         size (or size (count m))]
     (map->B+TreeLeafNode {:id id
                           :b b
-                          :size 0
+                          :size size
                           :m m})))

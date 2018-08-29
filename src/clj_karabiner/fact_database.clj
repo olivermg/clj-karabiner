@@ -147,34 +147,35 @@
 ;;; some sample invocations
 ;;;
 
-#_(def db1
+#_(let [#_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
+              [[:person/e0 :a1 :v1.1 1]
+               [:person/e0 :a2 :v2.1 1]
+               [:person/e0 :a3 :v3.1 1]
+               [:person/e0 :a3 :v3.2 2]])
+      be (clj-karabiner.storage-backend.kafka/kafka-storage-backend
+          :topic-prefix "factdb"
+          :topic-fn (fn [[e a v t :as fact]]
+                      (namespace e))
+          :key-fn (fn [[e a v t :as fact]]
+                    (name e))
+          :value-fn (fn [fact]
+                      fact))
+      db (time
+          (-> (database be
+                        :generation-count 3
+                        :branching-factor 1000)
+              #_(append [[:person/e1 :a1 :v1.1]
+                         [:person/e1 :a2 :v2.1]])
+              #_(append [[:person/e1 :a1 :v1.2]
+                         [:person/e1 :a3 :v3.1]])
+              #_(append [[:person/e2 :a1 :v1.1]
+                         [:person/e2 :a2 :v2.1]])
+              #_(append [[:person/e2 :a2 :v2.2]
+                         [:person/e2 :a3 :v3.1]])))
+      db-val1 (get-database-value db)]
   (time
-   (let [#_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
-                 [[:person/e0 :a1 :v1.1 1]
-                  [:person/e0 :a2 :v2.1 1]
-                  [:person/e0 :a3 :v3.1 1]
-                  [:person/e0 :a3 :v3.2 2]])
-         be (clj-karabiner.storage-backend.kafka/kafka-storage-backend
-             :topic-prefix "factdb"
-             :topic-fn (fn [[e a v t :as fact]]
-                         (namespace e))
-             :key-fn (fn [[e a v t :as fact]]
-                       (name e))
-             :value-fn (fn [fact]
-                         fact))
-         db (-> (database be
-                          :generation-count 3
-                          :branching-factor 1000)
-                #_(append [[:person/e1 :a1 :v1.1]
-                           [:person/e1 :a2 :v2.1]])
-                #_(append [[:person/e1 :a1 :v1.2]
-                           [:person/e1 :a3 :v3.1]])
-                #_(append [[:person/e2 :a1 :v1.1]
-                           [:person/e2 :a2 :v2.1]])
-                #_(append [[:person/e2 :a2 :v2.2]
-                           [:person/e2 :a3 :v3.1]]))
-         db-val1 (get-database-value db)]
-     #_(clj-karabiner.fact-database.dbvalue/query-facts db-val1 [nil :a3 :v3.1])
-     #_(clj-karabiner.fact-database.dbvalue/query db-val1 [nil :a1 :v1.1]
-                                                  :project-full-entities? true)
-     db)))
+   #_(clj-karabiner.fact-database.dbvalue/query-facts db-val1 [nil :a3 :v3.1])
+   #_(clj-karabiner.fact-database.dbvalue/query db-val1 [nil :a1 :v1.1]
+                                                :project-full-entities? true)
+   (clj-karabiner.fact-database.dbvalue/query db-val1 [nil :length 2]
+                                              :project-full-entities? true)))

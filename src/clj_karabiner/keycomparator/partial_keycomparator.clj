@@ -8,6 +8,8 @@
   kc/KeyComparator
 
   (cmp [this a b]
+    (swap! clj-karabiner.tree.bplustree.nodes/+stats+
+           #(update-in % [:compares] inc))
     (vswap! cnt inc)
     (letfn [(coll-ctor [c]
               (cond (vector? c) vec

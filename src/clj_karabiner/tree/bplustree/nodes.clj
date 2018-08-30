@@ -5,7 +5,8 @@
             #_[clj-karabiner.cache :as c]
             [clj-karabiner.keycomparator :as kc]
             [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
-            #_[clojure.tools.logging :as log]))
+            #_[clojure.tools.logging :as log]
+            [clj-karabiner.stats :as stats]))
 
 
 ;;; TODO:
@@ -29,16 +30,6 @@
 ;;; - introduce protocol/record for key comparison
 ;;; - implement saving nodes to external memory depending on their
 ;;;   last-visited state
-
-
-(def +stats+ (atom {:nodes {:internal 0
-                            :leaf 0}
-                    :lookups {:internal 0
-                              :leaf 0
-                              :local 0}
-                    :inserts {:internal 0
-                              :leaf 0}
-                    :compares 0}))
 
 
 (let [node-id-rnd (java.util.Random.)]
@@ -116,7 +107,7 @@
 
 
 (defn lookup-local [{:keys [size ks vs] :as this} k {:keys [key-comparator] :as user-data}]
-  (swap! +stats+ #(update-in % [:lookups :local] inc))
+  (swap! stats/+stats+ #(update-in % [:lookups :local] inc))
   (let [[k* v* _ _]   (ksvs-range-search ks size vs k key-comparator)]
     {:actual-k k*
      :value v*
@@ -138,7 +129,7 @@
   t/ModifyableNode
 
   (insert* [this k v {:keys [key-comparator] :as user-data}]
-    (swap! +stats+ #(update-in % [:inserts :internal] inc))
+    (swap! stats/+stats+ #(update-in % [:inserts :internal] inc))
     #_(println " => INSERT* INTERNAL" k)
     (letfn [(split [{:keys [b ks vs size] :as n}]
               (let [partition-size  (-> size (/ 2) Math/ceil int)
@@ -181,7 +172,7 @@
   t/LookupableNode
 
   (lookup* [this k user-data]
-    (swap! +stats+ #(update-in % [:lookups :internal] inc))
+    (swap! stats/+stats+ #(update-in % [:lookups :internal] inc))
     #_(println " => LOOKUP* INTERNAL" k)
     (let [{child :value
            nuser-data :user-data} (lookup-local this k user-data)]
@@ -200,7 +191,7 @@
 
 
 (defn b+tree-internalnode [b & {:keys [ks vs size]}]
-  (swap! +stats+ #(update-in % [:nodes :internal] inc))
+  (swap! stats/+stats+ #(update-in % [:nodes :internal] inc))
   (let [id (new-nodeid)
         size (or size (count ks))]
     ;;; TODO: make sure ks & vs are realized, as otherwise we will run into
@@ -224,7 +215,7 @@
   t/ModifyableNode
 
   (insert* [this k v {:keys [leaf-neighbours] :as user-data}]
-    (swap! +stats+ #(update-in % [:inserts :leaf] inc))
+    (swap! stats/+stats+ #(update-in % [:inserts :leaf] inc))
     #_(println " => INSERT* LEAF" k)
     (letfn [(insert-leaf-neighbours [n1]
               (let [{pleaf :prev nleaf :next} (get leaf-neighbours this)
@@ -278,7 +269,7 @@
   t/LookupableNode
 
   (lookup* [this k user-data]
-    (swap! +stats+ #(update-in % [:lookups :leaf] inc))
+    (swap! stats/+stats+ #(update-in % [:lookups :leaf] inc))
     #_(println " => LOOKUP* LEAF" k)
     (let [value (get m k)]
       {:actual-k k
@@ -310,7 +301,7 @@
 
 
 (defn b+tree-leafnode [b & {:keys [m key-comparator size]}]
-  (swap! +stats+ #(update-in % [:nodes :leaf] inc))
+  (swap! stats/+stats+ #(update-in % [:nodes :leaf] inc))
   (let [m (or m (sorted-map-by #(kc/cmp key-comparator %1 %2)))
         id (new-nodeid)
         size (or size (count m))]

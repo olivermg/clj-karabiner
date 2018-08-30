@@ -1,5 +1,6 @@
 (ns clj-karabiner.keycomparator.partial-keycomparator
-  (:require [clj-karabiner.keycomparator :as kc]))
+  (:require [clj-karabiner.keycomparator :as kc]
+            [clj-karabiner.stats :as stats]))
 
 
 ;;; TODO: make this faster
@@ -8,7 +9,7 @@
   kc/KeyComparator
 
   (cmp [this a b]
-    (swap! clj-karabiner.tree.bplustree.nodes/+stats+
+    (swap! stats/+stats+
            #(update-in % [:compares] inc))
     (vswap! cnt inc)
     (letfn [(coll-ctor [c]

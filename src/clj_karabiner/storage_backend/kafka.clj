@@ -75,19 +75,17 @@
                                       "value.deserializer" "clj_karabiner.storage_backend.kafka.TransitDeserializer"
                                       "group.id"           (str (java.util.UUID/randomUUID))
                                       "max.poll.records"   "500"
-                                      "enable.auto.commit" "false"})
-            cnt (atom 1)]
+                                      "enable.auto.commit" "false"})]
         (doto consumer
           (.subscribe @topics)
           (.poll 0)
           (.seekToBeginning (.assignment consumer)))
-        (letfn [(get-chunks []
+        (letfn [(get-chunks [cnt]
                   (lazy-seq
-                   (println "I/O" @cnt)
-                   (swap! cnt inc)
+                   (println "I/O" cnt)
                    (let [crs (.poll consumer 250)]
                      (if (and crs (> (.count crs) 0))
-                       (concat (map (fn [cr]
+                       (concat (mapv (fn [cr]
                                       #_{:key (.key cr)
                                        :value (.value cr)
                                        :topic (->> (.topic cr)
@@ -97,10 +95,10 @@
                                        :offset (.offset cr)}
                                       (.value cr))
                                     crs)
-                               (get-chunks))
+                               (get-chunks (inc cnt)))
                        (do (.close consumer)
                            nil)))))]
-          (get-chunks)))
+          (get-chunks 0)))
       []))
 
   sb/AppendableStorageBackend

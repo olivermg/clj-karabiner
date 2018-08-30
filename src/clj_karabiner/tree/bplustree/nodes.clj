@@ -31,11 +31,21 @@
 ;;;   last-visited state
 
 
+
+(let [node-id-rnd (java.util.Random.)]
+  (defn new-nodeid []
+    ;;; NOTE:
+    ;;; - .nextLong on an already initialized Random is faster than rand-int
+    ;;; - we can just take a random value as node id, as the identity property is not
+    ;;;   important for nodes. we don't assume that we'll generate the same node
+    ;;;   more than once
+    (.nextLong node-id-rnd)))
+
+
 (defn- assoc-if-not-nil [m k v]
   (if-not (nil? k)
     (assoc m k v)
     m))
-
 
 
 (defprotocol B+TreeLeafNodeIterable
@@ -178,13 +188,17 @@
 
 
 (defn b+tree-internalnode [b & {:keys [ks vs size]}]
-  (let [id (hash {:b b :ks ks :vs vs})
+  (let [id (new-nodeid)
         size (or size (count ks))]
-    (map->B+TreeInternalNode {:id id
-                              :b b
+    ;;; TODO: make sure ks & vs are realized, as otherwise we will run into
+    ;;;   stackoverflows as soon as many data items are involved. this is because
+    ;;;   lazy sequences will pile up and when realizing such a pile, stack will
+    ;;;   explode
+    (map->B+TreeInternalNode {:id   id
+                              :b    b
                               :size size
-                              :ks ks
-                              :vs vs})))
+                              :ks   (doall ks)
+                              :vs   (doall vs)})))
 
 
 (defrecord B+TreeLeafNode [id b size m]
@@ -282,9 +296,9 @@
 
 (defn b+tree-leafnode [b & {:keys [m key-comparator size]}]
   (let [m (or m (sorted-map-by #(kc/cmp key-comparator %1 %2)))
-        id (hash {:b b :m m})
+        id (new-nodeid)
         size (or size (count m))]
-    (map->B+TreeLeafNode {:id id
-                          :b b
+    (map->B+TreeLeafNode {:id   id
+                          :b    b
                           :size size
-                          :m m})))
+                          :m    m})))

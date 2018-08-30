@@ -24,7 +24,7 @@
             (DedupList. (.cons l o) (conj s o) maxlen ncurlen)
             (DedupList. (take maxlen (.cons l o))
                         (-> (conj s o)
-                            (disj (last l)))
+                            (disj (last l)))  ;; TODO: optimize runtime
                         maxlen
                         curlen))))))
 

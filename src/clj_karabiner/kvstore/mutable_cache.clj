@@ -9,7 +9,7 @@
 
   (store [this k v]
     (swap! l #(conj % k))
-    (swap! m #(select-keys (assoc % k v) @l)))
+    (swap! m #(select-keys (assoc % k v) @l))) ;; TODO: optimize runtime
 
   (lookup* [this k not-found]
     (let [v (get @m k ::not-found)]

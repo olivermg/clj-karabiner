@@ -18,4 +18,5 @@
                  #_[spootnik/kinsky "0.1.22"]
                  [org.apache.kafka/kafka-clients "2.0.0"]]
 
-  :profiles {:dev {:dependencies [[org.clojure/test.check "0.9.0"]]}})
+  :profiles {:dev {:dependencies [[org.clojure/test.check "0.9.0"]
+                                  [criterium "0.4.4"]]}})

@@ -83,7 +83,7 @@
         (letfn [(get-chunks [cnt]
                   (lazy-seq
                    (println "I/O" cnt)
-                   (let [crs (.poll consumer 250)]
+                   (let [crs (.poll consumer 1000)]
                      (if (and crs (> (.count crs) 0))
                        (concat (mapv (fn [cr]
                                       #_{:key (.key cr)

@@ -9,8 +9,18 @@
             [clj-karabiner.kvstore.chain :as kvsch]
             [clj-karabiner.keycomparator :as kc]
             [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
-            #_[clojure.tools.logging :as log]))
+            #_[clojure.tools.logging :as log]
+            [criterium.core :as cc]))
 
+
+(def stats (volatile! {:count 0
+                       :min Integer/MAX_VALUE
+                       :max 0
+                       :mean 0
+                       :sum 0
+                       :gcsum 0
+                       :gccount 0
+                       :prevheap 0}))
 
 (defn- user-data [{:keys [key-comparator leaf-neighbours node-swapper] :as this}]
   {:key-comparator key-comparator
@@ -23,16 +33,39 @@
 
   (insert* [this k v _]
     #_(println "=== INSERT* ===" k)
-    (let [[n1 k n2 nlnbs] (t/insert* root k v (user-data this))
+    (let [t1 (cc/timestamp)
+          [n1 k n2 nlnbs] (t/insert* root k v (user-data this))
+          t2 (cc/timestamp)
           nroot (if (nil? n2)
                   n1
                   (->> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
-                       (swap/swappable-node node-kvstore)))]
-      (map->B+Tree {:b b
-                    :root nroot
-                    :key-comparator key-comparator
-                    :leaf-neighbours nlnbs
-                    :node-kvstore node-kvstore})))
+                       #_(swap/swappable-node node-kvstore)))
+          r (map->B+Tree {:b b
+                          :root nroot
+                          :key-comparator key-comparator
+                          :leaf-neighbours nlnbs
+                          :node-kvstore node-kvstore})]
+      (vswap! stats
+              (fn [{:keys [count min max mean sum gcsum prevheap gccount]}]
+                (let [td (long (/ (- t2 t1) 1000))
+                      count (inc count)
+                      heap (cc/heap-used)
+                      gc? (< heap prevheap)
+                      gccount (if-not gc?
+                                gccount
+                                (do (println "GC  " (long (/ t1 1000)))
+                                    (inc gccount)))]
+                  (when (> td 100000)
+                    (println "SLOW" (long (/ t1 1000)) td))
+                  {:count count
+                   :min (clojure.core/min min td)
+                   :max (clojure.core/max max td)
+                   :mean (int (+ mean (/ (- td mean) count)))
+                   :sum (+ sum td)
+                   :gcsum (if-not gc? gcsum (+ gcsum td))
+                   :gccount gccount
+                   :prevheap heap})))
+      r))
 
   t/LookupableNode
 
@@ -57,7 +90,7 @@
         key-comparator (or key-comparator (kcp/partial-key-comparator))]
     (map->B+Tree {:b b
                   :root (->> (bpn/b+tree-leafnode b :key-comparator key-comparator)
-                             (swap/swappable-node node-kvstore))
+                             #_(swap/swappable-node node-kvstore))
                   :key-comparator key-comparator
                   :leaf-neighbours {}
                   :node-kvstore node-kvstore})))
@@ -96,21 +129,25 @@
   (map :value [r1 r2 r3]))
 
 ;;; insert many generated items (numeric/atomic keys):
-#_(let [kvs (take 10000 (repeatedly #(let [k (-> (rand-int 9000000)
-                                                (+ 1000000))]
-                                      [k (str "v" k)])))
+(let [trees-to-keep 1
+      samples 100000
+      branching-factor 1000
+      kvs (take samples (repeatedly #(let [k (-> (rand-int 9000000)
+                                                 (+ 1000000))]
+                                       [k (str "v" k)])))
       ts (atom [])
       t (time (reduce (fn [t [k v]]
                         (let [nt (t/insert t k v)]
-                          (swap! ts #(take 10 (conj % nt)))
+                          (swap! ts #(take trees-to-keep
+                                           (conj % nt)))
                           #_(reset! ts t)
                           nt))
-                      (b+tree :b 1000)
+                      (b+tree :b branching-factor)
                       kvs))
       kv1 (first kvs)
       k1 (first kv1)]
   #_(Thread/sleep 120000)
-  (println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
+  #_(println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
   [kv1 (count @ts) (time (t/lookup t k1))])
 
 ;;; testing range lookup (vector keys):

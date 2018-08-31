@@ -129,7 +129,7 @@
   (map :value [r1 r2 r3]))
 
 ;;; insert many generated items (numeric/atomic keys):
-(let [trees-to-keep 1
+#_(let [trees-to-keep 1
       samples 100000
       branching-factor 1000
       kvs (take samples (repeatedly #(let [k (-> (rand-int 9000000)
@@ -147,7 +147,7 @@
       kv1 (first kvs)
       k1 (first kv1)]
   #_(Thread/sleep 120000)
-  #_(println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
+  (println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
   [kv1 (count @ts) (time (t/lookup t k1))])
 
 ;;; testing range lookup (vector keys):

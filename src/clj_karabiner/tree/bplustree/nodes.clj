@@ -53,52 +53,65 @@
 
 
 
-(defn binary-search [coll-size cmp-fn key-fn value-fn k & {:keys [not-found-value]}]
+(defn binary-search [coll-size cmp-fn key-fn value-fn k & {:keys [not-found]}]
   (letfn [(bs [i prev-i pprev-i]
-            (if (and (not= i prev-i) (not= i pprev-i))
-              (let [step (let [step* (/ (- i (or prev-i 0)) 2)]  ;; NOTE: using Math/abs is slow here
-                           (max (int (max step* (- step*))) 1))
-                    k* (key-fn i)
-                    [cmp-val k**] (cmp-fn k k* i)]
+            (let [step    (let [step* (/ (- i (or prev-i 0)) 2)]  ;; NOTE: using Math/abs is slow here
+                            (max (int (max step* (- step*))) 1))
+                  k*      (key-fn i)
+                  cmp-val (cmp-fn i k k*)]
+              (if (and (not= i prev-i) (not= i pprev-i))
                 (cond
                   (< cmp-val 0) (recur (max (- i step) 0)               i prev-i)
                   (> cmp-val 0) (recur (min (+ i step) (dec coll-size)) i prev-i)
-                  true          (value-fn i k k* k**)))
-              not-found-value))]
+                  true          (value-fn i k k*))
+                (if-not (fn? not-found)
+                  not-found
+                  (not-found i k k*)))))]
 
     (bs (int (/ coll-size 2)) nil nil)))
 
 
 (defn ksvs-range-search [ks ksize vs k key-comparator]
-  (letfn [(key-fn [i]
-            (nth ks i))
+  (let [last-cmpv (volatile! 0)]
+    (letfn [(key-fn [i]
+              (nth ks i ::inf))
 
-          (cmp-fn [k k* i]
-            (let [cmpv (kc/cmp key-comparator k k*)]
+            (cmp-fn [i k k*]
+              (vreset! last-cmpv (kc/cmp key-comparator k k*))
+              #_(let [cmpv (kc/cmp key-comparator k k*)]
+                  (cond
+                    (< cmpv 0) (let [k** (nth ks (dec i) nil)]
+                                 (if (or (nil? k**) (> (kc/cmp key-comparator k k**) 0))
+                                   [0 k*]
+                                   [-1]))
+                    (> cmpv 0) (let [k** (nth ks (inc i) nil)]
+                                 (if (or (nil? k**) (<= (kc/cmp key-comparator k k**) 0))
+                                   [0 (or k** ::inf)]
+                                   [1]))
+                    true       [0 k*])))
+
+            (value-fn [i k k*]
+              (let [ki (if (<= @last-cmpv 0) i (inc i))]
+                [k* (nth vs i) ki])
+              #_(let [i* (cond
+                           (= k** ::inf)                         (inc i)
+                           (<= (kc/cmp key-comparator k** k*) 0) i
+                           true                                  (inc i))]
+                  [k** (nth vs i*) i i*]))
+
+            (not-found-fn [i k k*]
               (cond
-                (< cmpv 0) (let [k** (nth ks (dec i) nil)]
-                             (if (or (nil? k**) (> (kc/cmp key-comparator k k**) 0))
-                               [0 k*]
-                               [-1]))
-                (> cmpv 0) (let [k** (nth ks (inc i) nil)]
-                             (if (or (nil? k**) (<= (kc/cmp key-comparator k k**) 0))
-                               [0 (or k** ::inf)]
-                               [1]))
-                true       [0 k*])))
+                (< @last-cmpv 0) [k* (nth vs i) i]
+                (> @last-cmpv 0) (let [k* (key-fn (inc i))]
+                                   [k* (nth vs (inc i)) (inc i)])
+                true     (throw (ex-info "should never happen" {}))))]
 
-          (value-fn [i k k* k**]
-            (let [i* (cond
-                       (= k** ::inf)                         (inc i)
-                       (<= (kc/cmp key-comparator k** k*) 0) i
-                       true                                  (inc i))]
-              [k** (nth vs i*) i i*]))]
-
-    (binary-search ksize cmp-fn key-fn value-fn k)))
+      (binary-search ksize cmp-fn key-fn value-fn k :not-found not-found-fn))))
 
 
 (defn ksvs-split [ks ksize vs k key-comparator]
   (let [;;;[ks1 ks2] (split-with #(< (kc/cmp key-comparator % k) 0) ks)
-        [_ _ _ split-i]  (ksvs-range-search ks ksize vs k key-comparator)
+        [_ _ split-i]  (ksvs-range-search ks ksize vs k key-comparator)
         [ks1 ks2]   (split-at split-i ks)
         ;;;[vs1 vs2] (split-at (count ks1) vs)
         [vs1 vs2]   (split-at split-i vs)
@@ -108,7 +121,7 @@
 
 (defn lookup-local [{:keys [size ks vs] :as this} k {:keys [key-comparator] :as user-data}]
   (swap! stats/+stats+ #(update-in % [:lookups :local] inc))
-  (let [[k* v* _ _]   (ksvs-range-search ks size vs k key-comparator)]
+  (let [[k* v* _]   (ksvs-range-search ks size vs k key-comparator)]
     {:actual-k k*
      :value v*
      :values [v*]

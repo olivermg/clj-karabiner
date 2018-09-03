@@ -4,11 +4,12 @@
             [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree :as bp]
             [clj-karabiner.fact-database.dbvalue :as dbv]
-            [clj-karabiner.storage-backend :as sb]))
+            [clj-karabiner.storage-backend :as sb]
+            [clj-karabiner.kvstore :as kvs]))
 
 
 ;;; NOTE: we don't need an avet index, as we can use the vaet index for [a v ...] lookups:
-(defrecord FactDatabase [storage-backend generation-count eavts aevts vaets eas
+(defrecord FactDatabase [storage-backend index-freeze-kvstore generation-count eavts aevts vaets eas
                          current-t])
 
 
@@ -60,7 +61,8 @@
                                     :eas eas}))))
 
 
-(defn- load-from-storage [{:keys [generation-count storage-backend eavts aevts vaets eas] :as this}]
+(defn- rebuild-indices [{:keys [generation-count storage-backend eavts aevts vaets eas] :as this}]
+  (println "REBUILD-INDICES")
   (letfn [(tx-aggregating-xf []
             (fn [xf]
               (let [prev-t (volatile! ::none)
@@ -93,11 +95,42 @@
                                                    args))
                                                [0 eavts aevts vaets eas]
                                                (sb/load storage-backend))]
-      (map->FactDatabase (merge this {:current-t t
-                                      :eavts eavts
-                                      :aevts aevts
-                                      :vaets vaets
-                                      :eas eas})))))
+      {:current-t t
+       :eavts eavts
+       :aevts aevts
+       :vaets vaets
+       :eas eas})))
+
+
+(defn- load-indices [{:keys [index-freeze-kvstore] :as this}]
+  (println "LOAD-INDICES")
+  (when index-freeze-kvstore
+    (letfn [(thaw-index [k]
+              (when-let [v (kvs/lookup index-freeze-kvstore k)]
+                (n/thaw v)))]
+      {:current-t (thaw-index :current-t)
+       :eavts (thaw-index :eavts)
+       :aevts (thaw-index :aevts)
+       :vaets (thaw-index :vaets)
+       :eas   (thaw-index :eas)})))
+
+
+(defn- restore-indices [this]
+  (let [{:keys [current-t eavts aevts vaets eas] :as indices} (load-indices this)]
+    (if (not-any? nil? (vals indices))
+      (map->FactDatabase (merge this indices))
+      (map->FactDatabase (merge this (rebuild-indices this))))))
+
+
+(defn- freeze-indices [{:keys [index-freeze-kvstore current-t eavts aevts vaets eas] :as this}]
+  (letfn [(freeze-index [k v]
+            (->> (n/freeze v)
+                 (kvs/store index-freeze-kvstore k)))]
+    (freeze-index :eavts eavts)
+    (freeze-index :aevts aevts)
+    (freeze-index :vaets vaets)
+    (freeze-index :eas eas)
+    (freeze-index :current-t current-t)))
 
 
 (defn get-database-value
@@ -127,55 +160,60 @@
 
 
 (defn database [storage-backend & {:keys [b+tree-branching-factor
-                                          generation-count]
+                                          generation-count
+                                          index-freeze-kvstore]
                                    :or {generation-count 1000}}]
 
   (letfn [(make-index []
             (bp/b+tree :b b+tree-branching-factor))]
 
     (-> (map->FactDatabase {:storage-backend storage-backend
+                            :index-freeze-kvstore index-freeze-kvstore
                             :generation-count generation-count
                             :eavts (list (make-index))
                             :aevts (list (make-index))
                             :vaets (list (make-index))
                             :eas   (list (make-index))
                             :current-t 0})
-        (load-from-storage))))
+        (restore-indices))))
 
 
 ;;;
 ;;; some sample invocations
 ;;;
 
-#_(let [#_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
-              [[:person/e0 :a1 :v1.1 1]
-               [:person/e0 :a2 :v2.1 1]
-               [:person/e0 :a3 :v3.1 1]
-               [:person/e0 :a3 :v3.2 2]])
-      be (clj-karabiner.storage-backend.kafka/kafka-storage-backend
-          :topic-prefix "factdb"
-          :topic-fn (fn [[e a v t :as fact]]
-                      (namespace e))
-          :key-fn (fn [[e a v t :as fact]]
-                    (name e))
-          :value-fn (fn [fact]
-                      fact))
-      db (time
-          (-> (database be
-                        :generation-count 3
-                        :branching-factor 1000)
-              #_(append [[:person/e1 :a1 :v1.1]
-                         [:person/e1 :a2 :v2.1]])
-              #_(append [[:person/e1 :a1 :v1.2]
-                         [:person/e1 :a3 :v3.1]])
-              #_(append [[:person/e2 :a1 :v1.1]
-                         [:person/e2 :a2 :v2.1]])
-              #_(append [[:person/e2 :a2 :v2.2]
-                         [:person/e2 :a3 :v3.1]])))
-      db-val1 (get-database-value db)]
-  (time
-   #_(clj-karabiner.fact-database.dbvalue/query-facts db-val1 [nil :a3 :v3.1])
-   #_(clj-karabiner.fact-database.dbvalue/query db-val1 [nil :a1 :v1.1]
-                                                :project-full-entities? true)
-   (clj-karabiner.fact-database.dbvalue/query db-val1 [nil :length 2]
-                                              :project-full-entities? true)))
+#_(def db (let [#_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
+                      [[:person/e0 :a1 :v1.1 1]
+                       [:person/e0 :a2 :v2.1 1]
+                       [:person/e0 :a3 :v3.1 1]
+                       [:person/e0 :a3 :v3.2 2]])
+              be (clj-karabiner.storage-backend.kafka/kafka-storage-backend
+                  :topic-prefix "factdb"
+                  :topic-fn (fn [[e a v t :as fact]]
+                              (namespace e))
+                  :key-fn (fn [[e a v t :as fact]]
+                            (name e))
+                  :value-fn (fn [fact]
+                              fact))
+              ifkvs (clj-karabiner.kvstore.atom/atom-kvstore)
+              db (time
+                  (-> (database be
+                                :index-freeze-kvstore ifkvs
+                                :generation-count 3
+                                :branching-factor 1000)
+                      #_(append [[:person/e1 :a1 :v1.1]
+                                 [:person/e1 :a2 :v2.1]])
+                      #_(append [[:person/e1 :a1 :v1.2]
+                                 [:person/e1 :a3 :v3.1]])
+                      #_(append [[:person/e2 :a1 :v1.1]
+                                 [:person/e2 :a2 :v2.1]])
+                      #_(append [[:person/e2 :a2 :v2.2]
+                                 [:person/e2 :a3 :v3.1]])))
+              db-val1 (get-database-value db)]
+          (time
+           #_(clj-karabiner.fact-database.dbvalue/query-facts db-val1 [nil :a3 :v3.1])
+           #_(clj-karabiner.fact-database.dbvalue/query db-val1 [nil :a1 :v1.1]
+                                                        :project-full-entities? true)
+           #_(clj-karabiner.fact-database.dbvalue/query db-val1 [nil :length 2]
+                                                        :project-full-entities? true)
+           db)))

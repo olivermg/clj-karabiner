@@ -102,13 +102,14 @@
        :eas eas})))
 
 
-(defn- load-indices [{:keys [index-freeze-kvstore] :as this}]
-  (println "LOAD-INDICES")
+(defn- thaw-indices [{:keys [index-freeze-kvstore] :as this}]
+  (println "THAW-INDICES")
   (when index-freeze-kvstore
     (letfn [(thaw-index [k]
               (when-let [v (kvs/lookup index-freeze-kvstore k)]
                 (n/thaw v)))]
-      {:current-t (thaw-index :current-t)
+      {:current-t (when-let [v (kvs/lookup index-freeze-kvstore :current-t)]
+                    (n/thaw v))
        :eavts (thaw-index :eavts)
        :aevts (thaw-index :aevts)
        :vaets (thaw-index :vaets)
@@ -116,7 +117,7 @@
 
 
 (defn- restore-indices [this]
-  (let [{:keys [current-t eavts aevts vaets eas] :as indices} (load-indices this)]
+  (let [{:keys [current-t eavts aevts vaets eas] :as indices} (thaw-indices this)]
     (if (not-any? nil? (vals indices))
       (map->FactDatabase (merge this indices))
       (map->FactDatabase (merge this (rebuild-indices this))))))
@@ -130,7 +131,7 @@
     (freeze-index :aevts aevts)
     (freeze-index :vaets vaets)
     (freeze-index :eas eas)
-    (freeze-index :current-t current-t)))
+    (kvs/store index-freeze-kvstore :current-t (n/freeze current-t))))
 
 
 (defn get-database-value

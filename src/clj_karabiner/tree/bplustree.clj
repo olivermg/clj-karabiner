@@ -10,7 +10,8 @@
             [clj-karabiner.keycomparator :as kc]
             [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
             #_[clojure.tools.logging :as log]
-            [criterium.core :as cc]))
+            [criterium.core :as cc]
+            #_[taoensso.nippy :as n]))
 
 
 (def stats (volatile! {:count 0
@@ -80,6 +81,13 @@
 
   (iterate-leafnodes [this]
     (bpn/iterate-leafnodes root)))
+
+
+#_(n/extend-freeze B+Tree :b+tree [x out]
+                 (->> (select-keys x #{:b :root :leaf-neighbours :key-comparator :node-kvstore})
+                      #_(merge {:key-comparator (type (:key-comparator x))
+                              :node-kvstore (type (:node-kvstore x))})
+                      (n/freeze-to-out! out)))
 
 
 (defn b+tree [& {:keys [b key-comparator node-cache node-storage]}]

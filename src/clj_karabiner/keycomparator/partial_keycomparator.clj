@@ -1,6 +1,7 @@
 (ns clj-karabiner.keycomparator.partial-keycomparator
   (:require [clj-karabiner.keycomparator :as kc]
-            [clj-karabiner.stats :as stats]))
+            [clj-karabiner.stats :as stats]
+            [taoensso.nippy :as n]))
 
 
 ;;; TODO: make this faster
@@ -50,6 +51,16 @@
                         (cmp* a (->> b (take la) ctorb)))
             (> la lb) (let [ctora (coll-ctor a)]
                         (cmp* (->> a (take lb) ctora) b))))))))
+
+
+(defrecord PartialKeyComparator* [cnt])  ;; NOTE: helper record for nippy serialization
+
+(n/extend-freeze PartialKeyComparator :partial-key-comparator [x out]
+                 (n/freeze-to-out! out (->PartialKeyComparator* @(:cnt x))))
+
+(n/extend-thaw :partial-key-comparator [in]
+               (let [pkc* (n/thaw-from-in! in)]
+                 (->PartialKeyComparator (atom (:cnt pkc*)))))
 
 
 (defn partial-key-comparator []

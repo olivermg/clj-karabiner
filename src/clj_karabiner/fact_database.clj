@@ -163,22 +163,19 @@
 
 (defn database [storage-backend & {:keys [branching-factor
                                           key-comparator
-                                          node-cache
-                                          node-storage
+                                          node-kvstore
                                           generation-count]
                                    :or {generation-count 1000}}]
 
   (letfn [(make-index []
             (bp/b+tree :b branching-factor
                        :key-comparator key-comparator
-                       :node-cache node-cache
-                       :node-storage node-storage))]
+                       :node-kvstore node-kvstore))]
 
     (-> (map->FactDatabase {:storage-backend storage-backend
                             :generation-count generation-count
                             :key-comparator key-comparator
-                            :node-cache node-cache
-                            :node-storage node-storage
+                            :node-kvstore node-kvstore
                             :eavts (list (make-index))
                             :aevts (list (make-index))
                             :vaets (list (make-index))
@@ -187,17 +184,20 @@
         #_(restore-indices))))
 
 
-(defn load-indices [{:keys [node-storage] :as this}]
-  #_(when-let [root-nodeids (kvs/lookup node-storage ::root-nodeids)]
-    {:eavts (map #(s/swappable-node))}))
+(defn load-indices [{:keys [node-kvstore] :as this}]
+  (when-let [root-nodeids (kvs/lookup node-kvstore ::root-nodeids)]
+    {:eavts (map #(s/swappable-node node-kvstore {:id %}))
+     :aevts (map #(s/swappable-node node-kvstore {:id %}))
+     :vaets (map #(s/swappable-node node-kvstore {:id %}))
+     :eas   (map #(s/swappable-node node-kvstore {:id %}))}))
 
 
-(defn save-indices [{:keys [node-storage eavts aevts vaets eas] :as this}]
+(defn save-indices [{:keys [node-kvstore eavts aevts vaets eas] :as this}]
   (let [data {:eavts (map t/id eavts)
               :aevts (map t/id aevts)
               :vaets (map t/id vaets)
               :eas   (map t/id eas)}]
-    (kvs/store node-storage ::root-nodeids data)))
+    (kvs/store node-kvstore ::root-nodeids data)))
 
 
 #_(defn save-db [this filename]
@@ -227,11 +227,15 @@
                       (name e))
             :value-fn (fn [fact]
                         fact))
+        nkvs (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
+        #_(clj-karabiner.kvstore.chain/kvstore-chain (clj-karabiner.kvstore.mutable-cache/mutable-caching-kvstore 100)
+                                                        (clj-karabiner.kvstore.atom/atom-kvstore))
         db (time
             (-> #_(load-db "./testdb")
                 (database be
                           :generation-count 3
-                          :branching-factor 1000)
+                          :branching-factor 1000
+                          :node-kvstore nkvs)
                 (rebuild-indices)
                 #_(append [[:person/e1 :a1 :v1.1]
                            [:person/e1 :a2 :v2.1]])

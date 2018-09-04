@@ -90,11 +90,10 @@
                       (n/freeze-to-out! out)))
 
 
-(defn b+tree [& {:keys [b key-comparator node-cache node-storage root]}]
+(defn b+tree [& {:keys [b key-comparator node-kvstore root]}]
   (let [b              (or b 1000)
-        node-cache     (or node-cache (kvsmc/mutable-caching-kvstore 100))
-        node-storage   (or node-storage (kvsa/atom-kvstore))
-        node-kvstore   (kvsch/kvstore-chain node-cache node-storage)
+        node-kvstore   (or node-kvstore (kvsch/kvstore-chain (kvsmc/mutable-caching-kvstore 100)
+                                                             (kvsa/atom-kvstore)))
         key-comparator (or key-comparator (kcp/partial-key-comparator))
         root           (or root (->> (bpn/b+tree-leafnode b :key-comparator key-comparator)
                                      (swap/swappable-node node-kvstore)))]
@@ -111,8 +110,7 @@
 ;;;
 
 ;;; insert a few items manually (vector keys):
-#_(let [t (-> (b+tree :b 3
-                    :node-cache (kvsmc/mutable-caching-kvstore 1))
+#_(let [t (-> (b+tree :b 3)
             (t/insert [:a 5] 55)
             (t/insert [:a 9] 99)
             (t/insert [:a 3] 33)

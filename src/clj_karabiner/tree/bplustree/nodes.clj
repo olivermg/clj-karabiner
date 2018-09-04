@@ -315,7 +315,7 @@
 
 (defn b+tree-leafnode [b & {:keys [m key-comparator size]}]
   (swap! stats/+stats+ #(update-in % [:nodes :leaf] inc))
-  (let [m (or m (sorted-map-by #(kc/cmp key-comparator %1 %2)))
+  (let [m (or m (sorted-map-by #(kc/cmp key-comparator %1 %2)))  ;; NOTE: nippy won't be able to (de)serialize that properly
         id (new-nodeid)
         size (or size (count m))]
     (map->B+TreeLeafNode {:id   id

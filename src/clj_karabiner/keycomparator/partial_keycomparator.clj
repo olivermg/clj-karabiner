@@ -53,14 +53,12 @@
                         (cmp* (->> a (take lb) ctora) b))))))))
 
 
-(defrecord PartialKeyComparator* [cnt])  ;; NOTE: helper record for nippy serialization
+#_(n/extend-freeze PartialKeyComparator :partial-key-comparator [x out]
+                 (n/freeze-to-out! out {:cnt @(:cnt x)}))
 
-(n/extend-freeze PartialKeyComparator :partial-key-comparator [x out]
-                 (n/freeze-to-out! out (->PartialKeyComparator* @(:cnt x))))
-
-(n/extend-thaw :partial-key-comparator [in]
-               (let [pkc* (n/thaw-from-in! in)]
-                 (->PartialKeyComparator (atom (:cnt pkc*)))))
+#_(n/extend-thaw :partial-key-comparator [in]
+               (let [m (n/thaw-from-in! in)]
+                 (map->PartialKeyComparator (update m :cnt #(atom %)))))
 
 
 (defn partial-key-comparator []

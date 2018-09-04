@@ -14,14 +14,12 @@
     (get @a k not-found)))
 
 
-(defrecord AtomKvStore* [a])  ;; NOTE: helper record for nippy serialization
+#_(n/extend-freeze AtomKvStore :atom-kvstore [x out]
+                 (n/freeze-to-out! out {:a @(:a x)}))
 
-(n/extend-freeze AtomKvStore :atom-kvstore [x out]
-                 (n/freeze-to-out! out (->AtomKvStore* @(:a x))))
-
-(n/extend-thaw :atom-kvstore [in]
-               (let [akvs (n/thaw-from-in! in)]
-                 (->AtomKvStore (atom (:a akvs)))))
+#_(n/extend-thaw :atom-kvstore [in]
+               (let [m (n/thaw-from-in! in)]
+                 (map->AtomKvStore (update m :a #(atom %)))))
 
 
 (defn atom-kvstore []

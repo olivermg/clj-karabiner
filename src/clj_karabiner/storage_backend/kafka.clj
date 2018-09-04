@@ -4,7 +4,8 @@
             #_[clojure.core.async :refer [go go-loop <! >! put!] :as a]
             [clj-karabiner.storage-backend :as sb]
             [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as sg])
+            [clojure.spec.gen.alpha :as sg]
+            [taoensso.nippy :as n])
   (:import [java.io ByteArrayOutputStream ByteArrayInputStream]
            [org.apache.kafka.clients.admin AdminClient NewTopic]
            [org.apache.kafka.clients.producer KafkaProducer ProducerRecord]
@@ -115,6 +116,21 @@
         {:partition (.partition record-meta)
          :offset (.offset record-meta)
          :timestamp (.timestamp record-meta)}))))
+
+
+#_(n/extend-freeze KafkaStorageBackend :kafka-storage-backend [x out]
+                 (n/freeze-to-out! out (-> (dissoc x :admin :producer :topic-fn :key-fn :value-fn)
+                                           (update :topics deref))))
+
+#_(n/extend-thaw :kafka-storage-backend [in]
+               (let [{:keys [bootstrap-server topics] :as m} (n/thaw-from-in! in)
+                     admin (AdminClient/create {"bootstrap.servers" bootstrap-server})
+                     producer (KafkaProducer. {"bootstrap.servers" bootstrap-server
+                                               "key.serializer"    "clj_karabiner.storage_backend.kafka.TransitSerializer"
+                                               "value.serializer"  "clj_karabiner.storage_backend.kafka.TransitSerializer"})]
+                 (map->KafkaStorageBackend (merge m {:admin admin
+                                                     :producer producer
+                                                     :topics (atom topics)}))))
 
 
 (defn kafka-storage-backend [& {:keys [topic-prefix bootstrap-server topic-fn key-fn value-fn partition-count replication-factor]

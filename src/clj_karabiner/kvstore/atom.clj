@@ -7,11 +7,13 @@
 
   kvs/KvStore
 
-  (store [this k v]
-    (swap! a #(assoc % k v)))
+  (store* [this k v pre-process]
+    (let [v ((or pre-process identity) v)]
+      (swap! a #(assoc % k v))))
 
-  (lookup* [this k not-found]
-    (get @a k not-found)))
+  (lookup* [this k not-found post-process]
+    (-> (get @a k not-found)
+        ((or post-process identity)))))
 
 
 #_(n/extend-freeze AtomKvStore :atom-kvstore [x out]

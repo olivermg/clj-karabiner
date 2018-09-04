@@ -7,14 +7,16 @@
 
   kvs/KvStore
 
-  (store [this k v]
-    (car/wcar conn
-              (car/set k v)))
+  (store* [this k v pre-process]
+    (let [v ((or pre-process identity) v)]
+      (car/wcar conn
+                (car/set k v))))
 
-  (lookup* [this k not-found]
+  (lookup* [this k not-found post-process]
     ;;; TODO: check on not-found:
-    (car/wcar conn
-              (car/get k))))
+    (-> (car/wcar conn
+                  (car/get k))
+        ((or post-process identity)))))
 
 
 (defn redis-kvstore [uri]

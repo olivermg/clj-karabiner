@@ -6,18 +6,19 @@
 
   kvs/KvStore
 
-  (store [this k v]
+  (store* [this k v pre-process]
     ;;; TODO: do this in parallel?
-    (dorun (map #(kvs/store % k v) kvstores)))
+    (let [v ((or pre-process identity) v)]
+      (dorun (map #(kvs/store % k v) kvstores))))
 
-  (lookup* [this k not-found]
+  (lookup* [this k not-found post-process]
     (loop [[store & stores] kvstores
            i 0]
       (if store
-        (let [v (kvs/lookup store k ::not-found)]
+        (let [v (kvs/lookup store k :not-found ::not-found)]
           (if-not (= v ::not-found)
             (do #_(println "HIT in store" i "for key" k)
-                v)
+                ((or post-process identity) v))
             (do #_(println "MISS in store" i "for key" k)
                 (recur stores (inc i)))))
         not-found))))

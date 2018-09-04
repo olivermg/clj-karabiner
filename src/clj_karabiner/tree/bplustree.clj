@@ -40,7 +40,7 @@
           nroot (if (nil? n2)
                   n1
                   (->> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
-                       #_(swap/swappable-node node-kvstore)))
+                       (swap/swappable-node node-kvstore)))
           r (map->B+Tree {:b b
                           :root nroot
                           :key-comparator key-comparator
@@ -90,15 +90,16 @@
                       (n/freeze-to-out! out)))
 
 
-(defn b+tree [& {:keys [b key-comparator node-cache node-storage]}]
+(defn b+tree [& {:keys [b key-comparator node-cache node-storage root]}]
   (let [b              (or b 1000)
         node-cache     (or node-cache (kvsmc/mutable-caching-kvstore 100))
         node-storage   (or node-storage (kvsa/atom-kvstore))
         node-kvstore   (kvsch/kvstore-chain node-cache node-storage)
-        key-comparator (or key-comparator (kcp/partial-key-comparator))]
+        key-comparator (or key-comparator (kcp/partial-key-comparator))
+        root           (or root (->> (bpn/b+tree-leafnode b :key-comparator key-comparator)
+                                     (swap/swappable-node node-kvstore)))]
     (map->B+Tree {:b b
-                  :root (->> (bpn/b+tree-leafnode b :key-comparator key-comparator)
-                             #_(swap/swappable-node node-kvstore))
+                  :root root
                   :key-comparator key-comparator
                   :leaf-neighbours {}
                   :node-kvstore node-kvstore})))

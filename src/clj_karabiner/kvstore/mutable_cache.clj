@@ -7,16 +7,15 @@
 
   kvs/KvStore
 
-  (store* [this k v pre-process]
-    (let [v ((or pre-process identity) v)]
-      (swap! l #(conj % k))
-      (swap! m #(select-keys (assoc % k v) @l)))) ;; TODO: optimize runtime
+  (store [this k v]
+    (swap! l #(conj % k))
+    (swap! m #(select-keys (assoc % k v) @l))) ;; TODO: optimize runtime
 
-  (lookup* [this k not-found post-process]
+  (lookup* [this k not-found]
     (let [v (get @m k ::not-found)]
       (if-not (= v ::not-found)
         (do (swap! l #(conj % k))
-            ((or post-process identity) v))
+            v)
         not-found))))
 
 

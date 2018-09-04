@@ -2,13 +2,9 @@
 
 
 (defprotocol KvStore
-  (store* [this k v pre-process])
-  (lookup* [this k not-found post-process]))
+  (store [this k v])
+  (lookup* [this k not-found]))
 
 
-(defn store [this k v & {:keys [pre-process]}]
-  (store* this k v pre-process))
-
-
-(defn lookup [this k & {:keys [not-found post-process]}]
-  (lookup* this k not-found post-process))
+(defn lookup [this k & [not-found]]
+  (lookup* this k not-found))

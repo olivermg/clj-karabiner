@@ -214,7 +214,8 @@
 ;;;
 
 #_(def db1
-  (let [#_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
+  (let [kcmp (clj-karabiner.keycomparator.partial-keycomparator/partial-key-comparator)
+        #_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
                 [[:person/e0 :a1 :v1.1 1]
                  [:person/e0 :a2 :v2.1 1]
                  [:person/e0 :a3 :v3.1 1]
@@ -227,15 +228,30 @@
                       (name e))
             :value-fn (fn [fact]
                         fact))
-        nkvs (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
-        #_(clj-karabiner.kvstore.chain/kvstore-chain (clj-karabiner.kvstore.mutable-cache/mutable-caching-kvstore 100)
-                                                        (clj-karabiner.kvstore.atom/atom-kvstore))
+        nkvs (clj-karabiner.kvstore.redis/redis-kvstore
+              "redis://localhost"
+              :clj->store (fn [v]
+                            (if (instance? clj_karabiner.tree.bplustree.nodes.B+TreeLeafNode v)
+                              (assoc v :m (into (array-map)
+                                                (:m v)))
+                              v))
+              :store->clj (fn [v]
+                            (if (instance? clj_karabiner.tree.bplustree.nodes.B+TreeLeafNode v)
+                              (clj-karabiner.tree.bplustree.nodes/map->B+TreeLeafNode
+                               (assoc v :m (into (sorted-map-by
+                                                  #(clj-karabiner.keycomparator/cmp kcmp %1 %2))
+                                                 (:m v))))
+                              v)))
+        #_(clj-karabiner.kvstore.chain/kvstore-chain
+         (clj-karabiner.kvstore.mutable-cache/mutable-caching-kvstore 100)
+         (clj-karabiner.kvstore.atom/atom-kvstore))
         db (time
             (-> #_(load-db "./testdb")
                 (database be
                           :generation-count 3
                           :branching-factor 1000
-                          :node-kvstore nkvs)
+                          :node-kvstore nkvs
+                          :key-comparator kcmp)
                 (rebuild-indices)
                 #_(append [[:person/e1 :a1 :v1.1]
                            [:person/e1 :a2 :v2.1]])

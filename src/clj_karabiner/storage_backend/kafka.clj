@@ -180,7 +180,7 @@
             :key-fn (fn [[e a v t :as fact]]
                       (name e))
             :value-fn identity)]
-    (dotimes [i 5000]
+    (dotimes [i 3000]
       (let [g    (s/gen ::eav)
             t    (int (/ i 3))
             fact (-> (sg/generate g) vec (conj t))]

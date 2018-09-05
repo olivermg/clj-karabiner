@@ -6,20 +6,6 @@
   (id [this]))
 
 
-(defprotocol SerializableNode
-  (serialize* [this t]))
-
-(defn serialize [this & {:keys [tree]}]
-  (serialize* this (or tree this)))
-
-
-(defprotocol DeserializableNode
-  (deserialize* [this t]))
-
-(defn deserialize [this & {:keys [tree]}]
-  (deserialize* this (or tree this)))
-
-
 (defprotocol ModifyableNode
   (insert* [this k v t]))
 

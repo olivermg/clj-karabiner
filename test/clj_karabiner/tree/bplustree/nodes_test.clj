@@ -30,55 +30,50 @@
                   vs [[1 2 3] [4 5 6]]]
               {:ks ks
                :vs vs
-               :size (count ks)}))
-
-          (build-userdata []
-            (let [key-comparator (pkc/partial-key-comparator)]
-              {:key-comparator key-comparator
-               :leaf-neighbours {}}))]
+               :size (count ks)}))]
 
     (let [this (build-this)
-          user-data (build-userdata)]
+          kc (pkc/partial-key-comparator)]
       (testing "min lookup"
-        (let [{k :actual-k v :value} (lookup-local this 1 user-data)]
+        (let [{k :actual-k v :value} (lookup-local this 1 kc)]
           (is (= 2 k))
           (is (= [1 2] v))))
       (testing "lookup 1"
-        (let [{k :actual-k v :value} (lookup-local this 7 user-data)]
+        (let [{k :actual-k v :value} (lookup-local this 7 kc)]
           (is (= 9 k))
           (is (= [7 8 9] v))))
       (testing "lookup 2"
-        (let [{k :actual-k v :value} (lookup-local this 4 user-data)]
+        (let [{k :actual-k v :value} (lookup-local this 4 kc)]
           (is (= 6 k))
           (is (= [3 4 5 6] v))))
       (testing "lookup 3"
-        (let [{k :actual-k v :value} (lookup-local this 23 user-data)]
+        (let [{k :actual-k v :value} (lookup-local this 23 kc)]
           (is (= 24 k))
           (is (= [23 24] v))))
       (testing "lookup 4"
-        (let [{k :actual-k v :value} (lookup-local this 29 user-data)]
+        (let [{k :actual-k v :value} (lookup-local this 29 kc)]
           (is (= 30 k))
           (is (= [28 29 30] v))))
       (testing "max lookup"
-        (let [{k :actual-k v :value} (lookup-local this 321 user-data)]
+        (let [{k :actual-k v :value} (lookup-local this 321 kc)]
           (is (= :clj-karabiner.tree.bplustree.nodes/inf k))
           (is (= [31 32 33] v)))))
 
     (let [this (build-this-2)
-          user-data (build-userdata)]
+          kc (pkc/partial-key-comparator)]
       (testing "max lookup"
-        (let [{k :actual-k v :value} (lookup-local this [:a 2] user-data)]
+        (let [{k :actual-k v :value} (lookup-local this [:a 2] kc)]
           (is (= [:a 4] k))
           (is (= {:b 3 :size 2 :m {[:a 3] 33 [:a 4] 44}} v)))))
 
     (let [this (build-this-3)
-          user-data (build-userdata)]
+          kc (pkc/partial-key-comparator)]
       (testing "lookup 1"
-        (let [{k :actual-k v :value} (lookup-local this 1 user-data)]
+        (let [{k :actual-k v :value} (lookup-local this 1 kc)]
           (is (= 3 k))
           (is (= [1 2 3] v))))
       (testing "lookup 2"
-        (let [{k :actual-k v :value} (lookup-local this 5 user-data)]
+        (let [{k :actual-k v :value} (lookup-local this 5 kc)]
           (is (= :clj-karabiner.tree.bplustree.nodes/inf k))
           (is (= [4 5 6] v)))))))
 

@@ -23,10 +23,6 @@
                        :gccount 0
                        :prevheap 0}))
 
-(defn- user-data [{:keys [key-comparator leaf-neighbours node-swapper] :as this}]
-  {:key-comparator key-comparator
-   :leaf-neighbours leaf-neighbours
-   :node-swapper node-swapper})
 
 (defrecord B+Tree [b root key-comparator leaf-neighbours node-kvstore]
 
@@ -35,7 +31,7 @@
   (insert* [this k v _]
     #_(println "=== INSERT* ===" k)
     (let [t1 (cc/timestamp)
-          [n1 k n2 nlnbs] (t/insert* root k v (user-data this))
+          [n1 k n2 nlnbs] (t/insert root k v :tree this)
           t2 (cc/timestamp)
           nroot (if (nil? n2)
                   n1
@@ -72,10 +68,10 @@
 
   (lookup* [this k _]
     #_(println "=== LOOKUP* ===" k)
-    (t/lookup* root k (user-data this)))
+    (t/lookup root k :tree this))
 
   (lookup-range* [this k _]
-    (t/lookup-range* root k (user-data this)))
+    (t/lookup-range root k :tree this))
 
   bpn/B+TreeLeafNodeIterable
 
@@ -137,7 +133,7 @@
 
 ;;; insert many generated items (numeric/atomic keys):
 #_(let [trees-to-keep 1
-      samples 100000
+      samples 10000
       branching-factor 1000
       kvs (take samples (repeatedly #(let [k (-> (rand-int 9000000)
                                                  (+ 1000000))]

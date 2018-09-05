@@ -119,13 +119,12 @@
     [[ks1 ks2] [vs1 vs2]]))
 
 
-(defn lookup-local [{:keys [size ks vs] :as this} k {:keys [key-comparator] :as user-data}]
+(defn lookup-local [{:keys [size ks vs] :as this} k key-comparator]
   (swap! stats/+stats+ #(update-in % [:lookups :local] inc))
   (let [[k* v* _]   (ksvs-range-search ks size vs k key-comparator)]
     {:actual-k k*
      :value v*
-     :values [v*]
-     :user-data user-data}))
+     :values [v*]}))
 
 
 (declare b+tree-internalnode b+tree-leafnode)
@@ -141,7 +140,7 @@
 
   t/ModifyableNode
 
-  (insert* [this k v {:keys [key-comparator] :as user-data}]
+  (insert* [this k v {:keys [key-comparator] :as t}]
     (swap! stats/+stats+ #(update-in % [:inserts :internal] inc))
     #_(println " => INSERT* INTERNAL" k)
     (letfn [(split [{:keys [b ks vs size] :as n}]
@@ -170,9 +169,8 @@
                   nn)))]
 
       (let [{childk :actual-k
-             childv :value
-             nuser-data :user-data} (lookup-local this k user-data)
-            [n1 nk n2 nlnbs]        (t/insert* childv k v nuser-data)
+             childv :value}         (lookup-local this k key-comparator)
+            [n1 nk n2 nlnbs]        (t/insert childv k v :tree t)
             nn                      (if (nil? n2)
                                       (ins this childk n1)
                                       (-> (ins this nk n1)
@@ -184,18 +182,16 @@
 
   t/LookupableNode
 
-  (lookup* [this k user-data]
+  (lookup* [this k {:keys [key-comparator] :as t}]
     (swap! stats/+stats+ #(update-in % [:lookups :internal] inc))
     #_(println " => LOOKUP* INTERNAL" k)
-    (let [{child :value
-           nuser-data :user-data} (lookup-local this k user-data)]
-      (t/lookup* child k nuser-data)))
+    (let [{child :value} (lookup-local this k key-comparator)]
+      (t/lookup* child k t)))
 
-  (lookup-range* [this k user-data]
+  (lookup-range* [this k {:keys [key-comparator] :as t}]
     #_(println " => LOOKUP-RANGE* INTERNAL" k)
-    (let [{child :value
-           nuser-data :user-data} (lookup-local this k user-data)]
-      (t/lookup-range* child k nuser-data)))
+    (let [{child :value} (lookup-local this k key-comparator)]
+      (t/lookup-range* child k t)))
 
   B+TreeLeafNodeIterable
 
@@ -227,7 +223,7 @@
 
   t/ModifyableNode
 
-  (insert* [this k v {:keys [leaf-neighbours] :as user-data}]
+  (insert* [this k v {:keys [leaf-neighbours] :as t}]
     (swap! stats/+stats+ #(update-in % [:inserts :leaf] inc))
     #_(println " => INSERT* LEAF" k)
     (letfn [(insert-leaf-neighbours [n1]
@@ -281,22 +277,21 @@
 
   t/LookupableNode
 
-  (lookup* [this k user-data]
+  (lookup* [this k t]
     (swap! stats/+stats+ #(update-in % [:lookups :leaf] inc))
     #_(println " => LOOKUP* LEAF" k)
     (let [value (get m k)]
       {:actual-k k
        :value value
-       :values [value]
-       :user-data user-data}))
+       :values [value]}))
 
-  (lookup-range* [this k {:keys [key-comparator leaf-neighbours] :as user-data}]
+  (lookup-range* [this k {:keys [key-comparator leaf-neighbours] :as t}]
     #_(println " => LOOKUP-RANGE* LEAF" k)
     (when (>= (kc/cmp key-comparator k (-> m keys first)) 0)
       (let [matching-keys (->> (keys m)
                                (filter #(= (kc/cmp key-comparator % k) 0)))
             {restvs :values} (when-let [next (-> (get leaf-neighbours this) :next)]
-                               (t/lookup-range* next k user-data))
+                               (t/lookup-range next k :tree t))
             values (lazy-seq
                     (concat (-> (select-keys m matching-keys)
                                 vals
@@ -304,8 +299,7 @@
                             restvs))]
         {:actual-k k
          :values values
-         :value (first values)
-         :user-data user-data})))
+         :value (first values)})))
 
   B+TreeLeafNodeIterable
 

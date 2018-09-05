@@ -15,20 +15,20 @@
 
   t/ModifyableNode
 
-  (insert* [this k v user-data]
+  (insert* [this k v t]
     (let [node (kvs/lookup kvstore id)
-          [n1 nk n2 lnbs lv] (t/insert* node k v user-data)
+          [n1 nk n2 lnbs lv] (t/insert* node k v t)
           sn1 (swappable-node kvstore n1)
           sn2 (and n2 (swappable-node kvstore n2))]
       [sn1 nk sn2 lnbs lv]))
 
   t/LookupableNode
 
-  (lookup* [this k user-data]
-    (t/lookup* (kvs/lookup kvstore id) k user-data))
+  (lookup* [this k t]
+    (t/lookup* (kvs/lookup kvstore id) k t))
 
-  (lookup-range* [this k user-data]
-    (t/lookup-range* (kvs/lookup kvstore id) k user-data)))
+  (lookup-range* [this k t]
+    (t/lookup-range* (kvs/lookup kvstore id) k t)))
 
 
 (defn swappable-node [kvstore node]

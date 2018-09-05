@@ -186,12 +186,12 @@
     (swap! stats/+stats+ #(update-in % [:lookups :internal] inc))
     #_(println " => LOOKUP* INTERNAL" k)
     (let [{child :value} (lookup-local this k key-comparator)]
-      (t/lookup* child k t)))
+      (t/lookup child k :tree t)))
 
   (lookup-range* [this k {:keys [key-comparator] :as t}]
     #_(println " => LOOKUP-RANGE* INTERNAL" k)
     (let [{child :value} (lookup-local this k key-comparator)]
-      (t/lookup-range* child k t)))
+      (t/lookup-range child k :tree t)))
 
   B+TreeLeafNodeIterable
 

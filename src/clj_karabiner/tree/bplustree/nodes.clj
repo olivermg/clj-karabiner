@@ -127,7 +127,9 @@
      :values [v*]}))
 
 
-(declare b+tree-internalnode b+tree-leafnode)
+(declare b+tree-internalnode b+tree-leafnode
+         map->SerializedB+TreeInternalNode
+         map->SerializedB+TreeLeafNode)
 
 
 ;;; TODO: we should be able to come up with a more elegant solution instead of ks & vs:
@@ -137,6 +139,15 @@
 
   (id [this]
     (:id this))
+
+  t/SerializableNode
+
+  (serialize* [this t]
+    (map->SerializedB+TreeInternalNode {:id id
+                                        :b b
+                                        :size size
+                                        :ks ks
+                                        :vs (doall (map #(t/serialize % :tree t) vs))}))
 
   t/ModifyableNode
 
@@ -199,6 +210,18 @@
     (lazy-seq (mapcat iterate-leafnodes vs))))
 
 
+(defrecord SerializedB+TreeInternalNode [id b size ks vs]
+
+  t/DeserializableNode
+
+  (deserialize* [this t]
+    (map->B+TreeInternalNode {:id id
+                              :b b
+                              :size size
+                              :ks ks
+                              :vs (doall (map #(t/deserialize % :tree t) vs))})))
+
+
 (defn b+tree-internalnode [b & {:keys [ks vs size]}]
   (swap! stats/+stats+ #(update-in % [:nodes :internal] inc))
   (let [id (new-nodeid)
@@ -220,6 +243,14 @@
 
   (id [this]
     (:id this))
+
+  t/SerializableNode
+
+  (serialize* [this t]
+    (map->SerializedB+TreeLeafNode {:id id
+                                    :b b
+                                    :size size
+                                    :m (into {} m)}))
 
   t/ModifyableNode
 
@@ -305,6 +336,18 @@
 
   (iterate-leafnodes [this]
     [this]))
+
+
+(defrecord SerializedB+TreeLeafNode [id b size m]
+
+  t/DeserializableNode
+
+  (deserialize* [this {:keys [key-comparator] :as t}]
+    (map->B+TreeLeafNode {:id id
+                          :b b
+                          :size size
+                          :m (into (sorted-map-by #(kc/cmp key-comparator %1 %2))
+                                   m)})))
 
 
 (defn b+tree-leafnode [b & {:keys [m key-comparator size]}]

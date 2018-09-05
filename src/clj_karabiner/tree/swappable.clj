@@ -13,6 +13,16 @@
   (id [this]
     (:id this))
 
+  t/SerializableNode
+
+  (serialize* [this t]
+    this)
+
+  t/DeserializableNode
+
+  (deserialize* [this t]
+    this)
+
   t/ModifyableNode
 
   (insert* [this k v {:keys [node-kvstore] :as t}]

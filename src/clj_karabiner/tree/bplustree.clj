@@ -106,7 +106,9 @@
 ;;;
 
 ;;; insert a few items manually (vector keys):
-#_(let [t (-> (b+tree :b 3)
+#_(let [node-kvstore (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
+        t (-> (b+tree :b 3
+                      :node-kvstore node-kvstore)
             (t/insert [:a 5] 55)
             (t/insert [:a 9] 99)
             (t/insert [:a 3] 33)
@@ -135,6 +137,7 @@
 #_(let [trees-to-keep 1
       samples 10000
       branching-factor 1000
+      node-kvstore (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
       kvs (take samples (repeatedly #(let [k (-> (rand-int 9000000)
                                                  (+ 1000000))]
                                        [k (str "v" k)])))
@@ -145,7 +148,8 @@
                                            (conj % nt)))
                           #_(reset! ts t)
                           nt))
-                      (b+tree :b branching-factor)
+                      (b+tree :b branching-factor
+                              :node-kvstore node-kvstore)
                       kvs))
       kv1 (first kvs)
       k1 (first kv1)]

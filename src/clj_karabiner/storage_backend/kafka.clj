@@ -103,7 +103,7 @@
                                                       (apply str))
                                           :partition (.partition cr)
                                           :offset (.offset cr)}
-                                       (swap! current-position
+                                       (swap! current-position  ;; TODO: how can we make this thread-safe?
                                               #(assoc-in % [(.topic cr) (.partition cr)] (inc (.offset cr))))
                                        (.value cr))
                                      crs)
@@ -124,7 +124,7 @@
             record (ProducerRecord. topic key value)
             record-meta (-> (.send producer record)
                             (.get))]
-        (swap! current-position
+        (swap! current-position  ;; TODO: how can we make this thread-safe?
                #(assoc-in % [topic (.partition record-meta)] (inc (.offset record-meta))))))))
 
 

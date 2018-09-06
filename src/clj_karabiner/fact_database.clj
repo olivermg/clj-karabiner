@@ -11,10 +11,10 @@
 
 ;;; NOTE: we don't need an avet index, as we can use the vaet index for [a v ...] lookups:
 (defrecord FactDatabase [storage-backend generation-count key-comparator node-cache node-storage
-                         eavts aevts vaets eas current-t])
+                         eavts aevts vaets eas current-t current-storage-position])
 
 
-(defn- append-tx-to-indices-generations [generation-count eavts aevts vaets eas tx-facts]
+(defn- append-tx-to-indices-generations [t generation-count eavts aevts vaets eas tx-facts]
 
   (letfn [(evolve-indices [old-indices new-index]
             (->> old-indices
@@ -22,10 +22,10 @@
                  (take generation-count)))
 
           (append-fact [[eavt aevt vaet ea] [e a v t :as fact]]
-            [(t/insert eavt fact      fact)
-             (t/insert aevt [a e v t] fact)
-             (t/insert vaet [v a e t] fact)
-             (t/insert ea   [e a]     fact)  ;; to keep track of most current t that touched this [e a]
+            [(t/insert eavt t fact      fact)
+             (t/insert aevt t [a e v t] fact)
+             (t/insert vaet t [v a e t] fact)
+             (t/insert ea   t [e a]     fact)  ;; to keep track of most current t that touched this [e a]
              ])
 
           (append-tx-to-indices [eavt aevt vaet ea tx-facts]
@@ -41,21 +41,27 @@
       [neavts naevts nvaets neas])))
 
 
-(defn- append-to-storage [{:keys [storage-backend] :as this} facts]
-  (dorun (map #(sb/append storage-backend %) facts)))
+(defn- append-to-storage [{:keys [storage-backend current-storage-position] :as this} facts]
+  (reduce (fn [pos fact]
+            (sb/append storage-backend fact))
+          current-storage-position
+          facts))
 
 
-(defn append [{:keys [current-t generation-count eavts aevts vaets eas] :as this} facts
+(defn append [{:keys [current-t current-storage-position generation-count eavts aevts vaets eas] :as this} facts
               & {:keys [index-only?]
                  :or {index-only? false}}]
   (let [t (inc current-t)
         facts (map (fn [[e a v :as fact]]
                      [e a v t])
                    facts)
-        [eavts aevts vaets eas] (append-tx-to-indices-generations generation-count eavts aevts vaets eas facts)]
-    (when-not index-only?
-      (append-to-storage this facts))
+        ncsp (if-not index-only?
+               (append-to-storage this facts)
+               current-storage-position)
+        [eavts aevts vaets eas] (append-tx-to-indices-generations t generation-count eavts aevts vaets eas facts)]
+
     (map->FactDatabase (merge this {:current-t t
+                                    :current-storage-position ncsp
                                     :eavts eavts
                                     :aevts aevts
                                     :vaets vaets
@@ -92,7 +98,7 @@
                                                  (if tx-facts
                                                    (let [t (or (-> tx-facts first (nth 3))  ;; tx-facts can be empty when storage is empty
                                                                0)]
-                                                     (into [t] (append-tx-to-indices-generations generation-count eavts aevts vaets eas tx-facts)))
+                                                     (into [t] (append-tx-to-indices-generations t generation-count eavts aevts vaets eas tx-facts)))
                                                    args))
                                                [0 eavts aevts vaets eas]
                                                (sb/load storage-backend))]
@@ -184,7 +190,7 @@
         #_(restore-indices))))
 
 
-(defn load-indices [{:keys [node-kvstore] :as this}]
+#_(defn load-indices [{:keys [node-kvstore] :as this}]
   (when-let [root-nodeids (kvs/lookup node-kvstore ::root-nodeids)]
     {:eavts (map #(s/swappable-node node-kvstore {:id %}))
      :aevts (map #(s/swappable-node node-kvstore {:id %}))
@@ -192,7 +198,7 @@
      :eas   (map #(s/swappable-node node-kvstore {:id %}))}))
 
 
-(defn save-indices [{:keys [node-kvstore eavts aevts vaets eas] :as this}]
+#_(defn save-indices [{:keys [node-kvstore eavts aevts vaets eas] :as this}]
   (let [data {:eavts (map t/id eavts)
               :aevts (map t/id aevts)
               :vaets (map t/id vaets)

@@ -8,6 +8,12 @@
 (defn insert [this tx k v & {:keys [tree]}]
   (insert* this tx k v (or tree this)))
 
+(defn insert-tx [this tx kv-map & {:keys [tree]}]
+  (reduce (fn [t [k v]]
+            (insert t tx k v :tree tree))
+          this
+          kv-map))
+
 
 (defprotocol LookupableNode
   (lookup* [this k tree])

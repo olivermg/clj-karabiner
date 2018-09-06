@@ -34,9 +34,10 @@
           [n1 k n2 nlnbs] (t/insert root tx k v :tree this)
           t2 (cc/timestamp)
           nroot (if (nil? n2)
-                  n1
-                  (->> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
-                       (swap/swappable-node node-kvstore tx)))
+                  (-> (swap/get-node n1 node-kvstore)  ;; NOTE: to flag this node as "root" in kvstore - we'll overwrite potential older root within the same transaction, but that should be ok
+                      (swap/swappable-node node-kvstore tx :key-id "root"))
+                  (-> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
+                      (swap/swappable-node node-kvstore tx :key-id "root")))
           r (map->B+Tree {:b b
                           :root nroot
                           :key-comparator key-comparator
@@ -91,8 +92,8 @@
         node-kvstore   (or node-kvstore (kvsch/kvstore-chain (kvsmc/mutable-caching-kvstore 100)
                                                              (kvsa/atom-kvstore)))
         key-comparator (or key-comparator (kcp/partial-key-comparator))
-        root           (or root (->> (bpn/b+tree-leafnode b :key-comparator key-comparator)
-                                     (swap/swappable-node node-kvstore 0)))]
+        root           (or root (-> (bpn/b+tree-leafnode b :key-comparator key-comparator)
+                                    (swap/swappable-node node-kvstore 0 :key-id "root")))]
     (map->B+Tree {:b b
                   :root root
                   :key-comparator key-comparator
@@ -107,26 +108,26 @@
 
 ;;; insert a few items manually (vector keys):
 #_(let [node-kvstore (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
-        t (-> (b+tree :b 3
-                      :node-kvstore node-kvstore)
-            (t/insert 1 [:a 5] 55)
-            (t/insert 1 [:a 9] 99)
-            (t/insert 1 [:a 3] 33)
-            (t/insert 1 [:a 4] 44)
-            (t/insert 1 [:a 2] 22)
-            (t/insert 1 [:a 1] 11)
-            (t/insert 2 [:b 5] 555)
-            (t/insert 2 [:b 9] 999)
-            (t/insert 2 [:b 3] 333)
-            (t/insert 2 [:b 4] 444)
-            (t/insert 2 [:b 2] 222)
-            (t/insert 2 [:b 1] 111)
-            (t/insert 3 [:c 5] 5555)
-            (t/insert 3 [:c 9] 9999)
-            (t/insert 3 [:c 3] 3333)
-            (t/insert 3 [:c 4] 4444)
-            (t/insert 3 [:c 2] 2222)
-            (t/insert 3 [:c 1] 1111))
+      t (-> (b+tree :b 3
+                    :node-kvstore node-kvstore)
+            (t/insert-tx 1 {[:a 5] 55
+                            [:a 9] 99
+                            [:a 3] 33
+                            [:a 4] 44
+                            [:a 2] 22
+                            [:a 1] 11})
+            (t/insert-tx 2 {[:b 5] 555
+                            [:b 9] 999
+                            [:b 3] 333
+                            [:b 4] 444
+                            [:b 2] 222
+                            [:b 1] 111})
+            (t/insert-tx 3 {[:c 5] 5555
+                            [:c 9] 9999
+                            [:c 3] 3333
+                            [:c 4] 4444
+                            [:c 2] 2222
+                            [:c 1] 1111}))
       r1 (t/lookup t [:a 5])
       r2 (t/lookup t [:c 4])
       r3 (t/lookup t [:b 1])]
@@ -135,8 +136,8 @@
 
 ;;; insert many generated items (numeric/atomic keys):
 #_(let [trees-to-keep 1
-      samples 10000
-      branching-factor 1000
+      samples 1000
+      branching-factor 100
       node-kvstore (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
       kvs (take samples (repeatedly #(let [k (-> (rand-int 9000000)
                                                  (+ 1000000))]

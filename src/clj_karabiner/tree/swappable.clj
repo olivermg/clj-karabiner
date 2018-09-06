@@ -7,13 +7,13 @@
 
 
 (let [node-key-rnd (java.util.Random.)]
-  (defn new-key [node tx]
+  (defn new-key [node tx key-id]
     ;;; NOTE:
     ;;; - .nextLong on an already initialized Random is faster than rand-int
     ;;; - we can just take a random value as key, as the identity property is not
     ;;;   important for nodes. we don't assume that we'll generate the same node
     ;;;   more than once
-    (str tx ":" (-> node class (.getSimpleName)) ":" (.nextLong node-key-rnd))))
+    (str tx ":" (or key-id (.nextLong node-key-rnd)))))
 
 
 (defrecord SwappableNode [key]
@@ -23,8 +23,8 @@
   (insert* [this tx k v {:keys [node-kvstore] :as t}]
     (let [node (kvs/lookup node-kvstore key)
           [n1 nk n2 lnbs lv] (t/insert node tx k v :tree t)
-          sn1 (swappable-node node-kvstore tx n1)
-          sn2 (and n2 (swappable-node node-kvstore tx n2))]
+          sn1 (swappable-node n1 node-kvstore tx)
+          sn2 (and n2 (swappable-node n2 node-kvstore tx))]
       [sn1 nk sn2 lnbs lv]))
 
   t/LookupableNode
@@ -36,7 +36,11 @@
     (t/lookup-range (kvs/lookup node-kvstore key) k :tree t)))
 
 
-(defn swappable-node [node-kvstore tx node]
-  (let [key (new-key node tx)]
+(defn get-node [{:keys [key] :as this} node-kvstore]
+  (kvs/lookup node-kvstore key))
+
+
+(defn swappable-node [node node-kvstore tx & {:keys [key-id]}]
+  (let [key (new-key node tx key-id)]
     (kvs/store node-kvstore key node)
     (map->SwappableNode {:key key})))

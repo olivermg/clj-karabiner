@@ -19,4 +19,5 @@
                  [org.apache.kafka/kafka-clients "2.0.0"]]
 
   :profiles {:dev {:dependencies [[org.clojure/test.check "0.9.0"]
-                                  [criterium "0.4.4"]]}})
+                                  [criterium "0.4.4"]
+                                  [com.clojure-goes-fast/clj-memory-meter "0.1.2"]]}})

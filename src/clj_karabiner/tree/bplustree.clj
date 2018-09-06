@@ -28,15 +28,15 @@
 
   t/ModifyableNode
 
-  (insert* [this k v _]
+  (insert* [this tx k v _]
     #_(println "=== INSERT* ===" k)
     (let [t1 (cc/timestamp)
-          [n1 k n2 nlnbs] (t/insert root k v :tree this)
+          [n1 k n2 nlnbs] (t/insert root tx k v :tree this)
           t2 (cc/timestamp)
           nroot (if (nil? n2)
                   n1
                   (->> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
-                       (swap/swappable-node node-kvstore)))
+                       (swap/swappable-node node-kvstore tx)))
           r (map->B+Tree {:b b
                           :root nroot
                           :key-comparator key-comparator
@@ -92,7 +92,7 @@
                                                              (kvsa/atom-kvstore)))
         key-comparator (or key-comparator (kcp/partial-key-comparator))
         root           (or root (->> (bpn/b+tree-leafnode b :key-comparator key-comparator)
-                                     (swap/swappable-node node-kvstore)))]
+                                     (swap/swappable-node node-kvstore 0)))]
     (map->B+Tree {:b b
                   :root root
                   :key-comparator key-comparator
@@ -109,24 +109,24 @@
 #_(let [node-kvstore (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
         t (-> (b+tree :b 3
                       :node-kvstore node-kvstore)
-            (t/insert [:a 5] 55)
-            (t/insert [:a 9] 99)
-            (t/insert [:a 3] 33)
-            (t/insert [:a 4] 44)
-            (t/insert [:a 2] 22)
-            (t/insert [:a 1] 11)
-            (t/insert [:b 5] 555)
-            (t/insert [:b 9] 999)
-            (t/insert [:b 3] 333)
-            (t/insert [:b 4] 444)
-            (t/insert [:b 2] 222)
-            (t/insert [:b 1] 111)
-            (t/insert [:c 5] 5555)
-            (t/insert [:c 9] 9999)
-            (t/insert [:c 3] 3333)
-            (t/insert [:c 4] 4444)
-            (t/insert [:c 2] 2222)
-            (t/insert [:c 1] 1111))
+            (t/insert 1 [:a 5] 55)
+            (t/insert 1 [:a 9] 99)
+            (t/insert 1 [:a 3] 33)
+            (t/insert 1 [:a 4] 44)
+            (t/insert 1 [:a 2] 22)
+            (t/insert 1 [:a 1] 11)
+            (t/insert 2 [:b 5] 555)
+            (t/insert 2 [:b 9] 999)
+            (t/insert 2 [:b 3] 333)
+            (t/insert 2 [:b 4] 444)
+            (t/insert 2 [:b 2] 222)
+            (t/insert 2 [:b 1] 111)
+            (t/insert 3 [:c 5] 5555)
+            (t/insert 3 [:c 9] 9999)
+            (t/insert 3 [:c 3] 3333)
+            (t/insert 3 [:c 4] 4444)
+            (t/insert 3 [:c 2] 2222)
+            (t/insert 3 [:c 1] 1111))
       r1 (t/lookup t [:a 5])
       r2 (t/lookup t [:c 4])
       r3 (t/lookup t [:b 1])]
@@ -142,11 +142,13 @@
                                                  (+ 1000000))]
                                        [k (str "v" k)])))
       ts (atom [])
+      i (volatile! 0)
       t (time (reduce (fn [t [k v]]
-                        (let [nt (t/insert t k v)]
+                        (vswap! i inc)
+                        (let [tx (int (/ @i 10))
+                              nt (t/insert t tx k v)]
                           (swap! ts #(take trees-to-keep
                                            (conj % nt)))
-                          #_(reset! ts t)
                           nt))
                       (b+tree :b branching-factor
                               :node-kvstore node-kvstore)
@@ -162,13 +164,16 @@
                 k2 ["x" "z" "y"]
                 k3 (range 50)]
             [[k1 k2 k3] (str (name k1) k2 (format "%02d" k3))])
+      i (volatile! 0)
       t1 (-> (reduce (fn [t [k v]]
-                       (let [nt (t/insert t k v)]
+                       (vswap! i inc)
+                       (let [tx (int (/ @i 10))
+                             nt (t/insert t tx k v)]
                          nt))
                      (b+tree :b 3)
                      kvs)
              time)
-      t2 (-> (t/insert t1 [:b "y" 3] "____")
+      t2 (-> (t/insert t1 (inc (int (/ @i 10))) [:b "y" 3] "____")
              time)]
   #_(clojure.pprint/pprint t2)
   [(time (:values (t/lookup-range t1 [:b "y"])))

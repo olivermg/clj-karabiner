@@ -135,7 +135,7 @@
 
   t/ModifyableNode
 
-  (insert* [this k v {:keys [key-comparator] :as t}]
+  (insert* [this tx k v {:keys [key-comparator] :as t}]
     (swap! stats/+stats+ #(update-in % [:inserts :internal] inc))
     #_(println " => INSERT* INTERNAL" k)
     (letfn [(split [{:keys [b ks vs size] :as n}]
@@ -165,7 +165,7 @@
 
       (let [{childk :actual-k
              childv :value}         (lookup-local this k key-comparator)
-            [n1 nk n2 nlnbs]        (t/insert childv k v :tree t)
+            [n1 nk n2 nlnbs]        (t/insert childv tx k v :tree t)
             nn                      (if (nil? n2)
                                       (ins this childk n1)
                                       (-> (ins this nk n1)
@@ -211,7 +211,7 @@
 
   t/ModifyableNode
 
-  (insert* [this k v {:keys [leaf-neighbours] :as t}]
+  (insert* [this tx k v {:keys [leaf-neighbours] :as t}]
     (swap! stats/+stats+ #(update-in % [:inserts :leaf] inc))
     #_(println " => INSERT* LEAF" k)
     (letfn [(insert-leaf-neighbours [n1]

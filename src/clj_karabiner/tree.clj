@@ -3,15 +3,15 @@
 
 
 (defprotocol ModifyableNode
-  (insert* [this k v t]))
+  (insert* [this tx k v tree]))
 
-(defn insert [this k v & {:keys [tree]}]
-  (insert* this k v (or tree this)))
+(defn insert [this tx k v & {:keys [tree]}]
+  (insert* this tx k v (or tree this)))
 
 
 (defprotocol LookupableNode
-  (lookup* [this k t])
-  (lookup-range* [this k t]))
+  (lookup* [this k tree])
+  (lookup-range* [this k tree]))
 
 (defn lookup [this k & {:keys [tree]}]
   (lookup* this k (or tree this)))

@@ -3,7 +3,11 @@
 
 
 (defprotocol LoadableStorageBackend
-  (load [this]))
+  (load-from-position [this position]))
+
+(defn load [this]
+  (load-from-position this nil))
+
 
 (defprotocol AppendableStorageBackend
   (append [this obj]))

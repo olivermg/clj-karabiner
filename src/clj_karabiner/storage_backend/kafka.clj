@@ -10,7 +10,8 @@
            [org.apache.kafka.clients.admin AdminClient NewTopic]
            [org.apache.kafka.clients.producer KafkaProducer ProducerRecord]
            [org.apache.kafka.clients.consumer KafkaConsumer]
-           [org.apache.kafka.common.serialization Serializer Deserializer]))
+           [org.apache.kafka.common.serialization Serializer Deserializer]
+           [org.apache.kafka.common TopicPartition]))
 
 
 (defrecord TransitSerializer []
@@ -64,12 +65,11 @@
 
 
 (defrecord KafkaStorageBackend [topic-prefix bootstrap-server topic-fn key-fn value-fn partition-count replication-factor
-                                topics admin producer]
+                                topics admin producer current-position]
 
   sb/LoadableStorageBackend
 
-  (load [this]
-    (println "TOPICS" @topics)
+  (load-from-position [this position]
     (if (not-empty @topics)
       (let [consumer (KafkaConsumer. {"bootstrap.servers"  bootstrap-server
                                       "key.deserializer"   "clj_karabiner.storage_backend.kafka.TransitDeserializer"
@@ -81,21 +81,32 @@
           (.subscribe @topics)
           (.poll 0)
           (.seekToBeginning (.assignment consumer)))
+        (when position
+          (dorun
+           (map (fn [[t v]]
+                  (dorun
+                   (map (fn [[p pos]]
+                          (let [tp (TopicPartition. t p)]
+                            (.seek consumer tp pos)))
+                        v)))
+                position)))
         (letfn [(get-chunks [cnt]
                   (lazy-seq
                    (println "I/O" cnt)
                    (let [crs (.poll consumer 1000)]
                      (if (and crs (> (.count crs) 0))
                        (concat (mapv (fn [cr]
-                                      #_{:key (.key cr)
-                                       :value (.value cr)
-                                       :topic (->> (.topic cr)
-                                                   (drop (count topic-prefix))
-                                                   (apply str))
-                                       :partition (.partition cr)
-                                       :offset (.offset cr)}
-                                      (.value cr))
-                                    crs)
+                                       #_{:key (.key cr)
+                                          :value (.value cr)
+                                          :topic (->> (.topic cr)
+                                                      (drop (count topic-prefix))
+                                                      (apply str))
+                                          :partition (.partition cr)
+                                          :offset (.offset cr)}
+                                       (swap! current-position
+                                              #(assoc-in % [(.topic cr) (.partition cr)] (inc (.offset cr))))
+                                       (.value cr))
+                                     crs)
                                (get-chunks (inc cnt)))
                        (do (.close consumer)
                            nil)))))]
@@ -108,14 +119,13 @@
     (let [topic (str topic-prefix (topic-fn obj))]
       (when-not (topic-exists? this topic)
         (create-topic this topic))
-      (let [key (key-fn obj)
+      (let [key (key-fn obj)  ;; NOTE: this will be used for calculating the parttion
             value (value-fn obj)
             record (ProducerRecord. topic key value)
             record-meta (-> (.send producer record)
                             (.get))]
-        {:partition (.partition record-meta)
-         :offset (.offset record-meta)
-         :timestamp (.timestamp record-meta)}))))
+        (swap! current-position
+               #(assoc-in % [topic (.partition record-meta)] (inc (.offset record-meta))))))))
 
 
 #_(n/extend-freeze KafkaStorageBackend :kafka-storage-backend [x out]
@@ -147,7 +157,8 @@
                                        :partition-count    (or partition-count 100)
                                        :replication-factor (or partition-count 1)
                                        :admin              admin
-                                       :producer           producer})]
+                                       :producer           producer
+                                       :current-position   (atom {})})]
     (assoc ksb :topics (atom (list-topics ksb)))))
 
 
@@ -194,5 +205,11 @@
                       (namespace e))
           :key-fn (fn [[e a v t :as fact]]
                     (name e))
-          :value-fn identity)]
-  (count (sb/load be)))
+          :value-fn identity)
+      _ (dorun (sb/load be))
+      pos0 @(:current-position be)
+      pos1 (do (sb/append be [:foo/bar :name "foobar" 111])
+               (sb/append be [:foo/baz :name "foobaz" 222]))]
+  (println "POS0" pos0)
+  (println "POS1" pos1)
+  (println (sb/load-from-position be pos0)))

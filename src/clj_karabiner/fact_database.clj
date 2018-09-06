@@ -228,20 +228,7 @@
                       (name e))
             :value-fn (fn [fact]
                         fact))
-        nkvs (clj-karabiner.kvstore.redis/redis-kvstore
-              "redis://localhost"
-              :clj->store (fn [v]
-                            (if (instance? clj_karabiner.tree.bplustree.nodes.B+TreeLeafNode v)
-                              (assoc v :m (into (array-map)
-                                                (:m v)))
-                              v))
-              :store->clj (fn [v]
-                            (if (instance? clj_karabiner.tree.bplustree.nodes.B+TreeLeafNode v)
-                              (clj-karabiner.tree.bplustree.nodes/map->B+TreeLeafNode
-                               (assoc v :m (into (sorted-map-by
-                                                  #(clj-karabiner.keycomparator/cmp kcmp %1 %2))
-                                                 (:m v))))
-                              v)))
+        nkvs (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
         #_(clj-karabiner.kvstore.chain/kvstore-chain
          (clj-karabiner.kvstore.mutable-cache/mutable-caching-kvstore 100)
          (clj-karabiner.kvstore.atom/atom-kvstore))

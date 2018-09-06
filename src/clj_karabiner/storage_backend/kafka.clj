@@ -191,7 +191,7 @@
             :key-fn (fn [[e a v t :as fact]]
                       (name e))
             :value-fn identity)]
-    (dotimes [i 3000]
+    (dotimes [i 1000]
       (let [g    (s/gen ::eav)
             t    (int (/ i 3))
             fact (-> (sg/generate g) vec (conj t))]
@@ -206,10 +206,13 @@
           :key-fn (fn [[e a v t :as fact]]
                     (name e))
           :value-fn identity)
-      _ (dorun (sb/load be))
-      pos0 @(:current-position be)
-      pos1 (do (sb/append be [:foo/bar :name "foobar" 111])
-               (sb/append be [:foo/baz :name "foobaz" 222]))]
-  (println "POS0" pos0)
-  (println "POS1" pos1)
-  (println (sb/load-from-position be pos0)))
+      facts (doall (sb/load be))
+      ;;;pos0 @(:current-position be)
+      #_pos1 #_(do (sb/append be [:foo/bar :name "foobar" 111])
+               (sb/append be [:foo/baz :name "foobaz" 222]))
+      ]
+  #_(println "POS0" pos0)
+  #_(println "POS1" pos1)
+  #_(println (sb/load-from-position be pos0))
+  (println facts)
+  (count facts))

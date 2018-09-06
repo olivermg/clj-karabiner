@@ -173,19 +173,23 @@
                                           generation-count]
                                    :or {generation-count 1000}}]
 
-  (letfn [(make-index []
-            (bp/b+tree :b branching-factor
+  (letfn [(make-index [name & [v-idx]]
+            (bp/b+tree :name name
+                       :b branching-factor
                        :key-comparator key-comparator
-                       :node-kvstore node-kvstore))]
+                       :node-kvstore node-kvstore
+                       :key->tree (if v-idx
+                                    #(update % v-idx pr-str)
+                                    identity)))]
 
     (-> (map->FactDatabase {:storage-backend storage-backend
                             :generation-count generation-count
                             :key-comparator key-comparator
                             :node-kvstore node-kvstore
-                            :eavts (list (make-index))
-                            :aevts (list (make-index))
-                            :vaets (list (make-index))
-                            :eas   (list (make-index))
+                            :eavts (list (make-index "eavt" 2))
+                            :aevts (list (make-index "aevt" 2))
+                            :vaets (list (make-index "vaet" 0))
+                            :eas   (list (make-index "ea"))
                             :current-t 0})
         #_(restore-indices))))
 
@@ -220,7 +224,7 @@
 ;;;
 
 #_(def db1
-  (let [kcmp (clj-karabiner.keycomparator.partial-keycomparator/partial-key-comparator)
+  (let [kcmp (clj-karabiner.keycomparator.default/default-key-comparator)
         #_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
                 [[:person/e0 :a1 :v1.1 1]
                  [:person/e0 :a2 :v2.1 1]
@@ -234,28 +238,15 @@
                       (name e))
             :value-fn (fn [fact]
                         fact))
-        nkvs (clj-karabiner.kvstore.redis/redis-kvstore
-              "redis://localhost"
-              :clj->store (fn [v]
-                            (if (instance? clj_karabiner.tree.bplustree.nodes.B+TreeLeafNode v)
-                              (assoc v :m (into (array-map)
-                                                (:m v)))
-                              v))
-              :store->clj (fn [v]
-                            (if (instance? clj_karabiner.tree.bplustree.nodes.B+TreeLeafNode v)
-                              (clj-karabiner.tree.bplustree.nodes/map->B+TreeLeafNode
-                               (assoc v :m (into (sorted-map-by
-                                                  #(clj-karabiner.keycomparator/cmp kcmp %1 %2))
-                                                 (:m v))))
-                              v)))
+        nkvs (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
         #_(clj-karabiner.kvstore.chain/kvstore-chain
-         (clj-karabiner.kvstore.mutable-cache/mutable-caching-kvstore 100)
-         (clj-karabiner.kvstore.atom/atom-kvstore))
+           (clj-karabiner.kvstore.mutable-cache/mutable-caching-kvstore 100)
+           (clj-karabiner.kvstore.atom/atom-kvstore))
         db (time
             (-> #_(load-db "./testdb")
                 (database be
                           :generation-count 3
-                          :branching-factor 1000
+                          :branching-factor 100
                           :node-kvstore nkvs
                           :key-comparator kcmp)
                 (rebuild-indices)

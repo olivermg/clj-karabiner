@@ -8,7 +8,8 @@
             [clj-karabiner.kvstore.mutable-cache :as kvsmc]
             [clj-karabiner.kvstore.chain :as kvsch]
             [clj-karabiner.keycomparator :as kc]
-            [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
+            #_[clj-karabiner.keycomparator.partial-keycomparator :as kcp]
+            [clj-karabiner.keycomparator.default :as kcd]
             #_[clojure.tools.logging :as log]
             [criterium.core :as cc]
             #_[taoensso.nippy :as n]))
@@ -24,25 +25,28 @@
                        :prevheap 0}))
 
 
-(defrecord B+Tree [b root key-comparator leaf-neighbours node-kvstore]
+(defrecord B+Tree [name b root key-comparator leaf-neighbours node-kvstore key->tree]
 
   t/ModifyableNode
 
   (insert* [this tx k v _]
-    #_(println "=== INSERT* ===" k)
+    #_(println "=== INSERT* ===" k v)
     (let [t1 (cc/timestamp)
+          k (key->tree k)
           [n1 k n2 nlnbs] (t/insert root tx k v :tree this)
           t2 (cc/timestamp)
           nroot (if (nil? n2)
                   (-> (swap/get-node n1 node-kvstore)  ;; NOTE: to flag this node as "root" in kvstore - we'll overwrite potential older root within the same transaction, but that should be ok
-                      (swap/swappable-node node-kvstore tx :key-id "root"))
+                      (swap/swappable-node node-kvstore tx :key-prefix name :key-id "root"))
                   (-> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
-                      (swap/swappable-node node-kvstore tx :key-id "root")))
-          r (map->B+Tree {:b b
+                      (swap/swappable-node node-kvstore tx :key-prefix name :key-id "root")))
+          r (map->B+Tree {:name name
+                          :b b
                           :root nroot
                           :key-comparator key-comparator
                           :leaf-neighbours nlnbs
-                          :node-kvstore node-kvstore})]
+                          :node-kvstore node-kvstore
+                          :key->tree key->tree})]
       (vswap! stats
               (fn [{:keys [count min max mean sum gcsum prevheap gccount]}]
                 (let [td (long (/ (- t2 t1) 1000))
@@ -69,10 +73,10 @@
 
   (lookup* [this k _]
     #_(println "=== LOOKUP* ===" k)
-    (t/lookup root k :tree this))
+    (t/lookup root (key->tree k) :tree this))
 
   (lookup-range* [this k _]
-    (t/lookup-range root k :tree this))
+    (t/lookup-range root (key->tree k) :tree this))
 
   bpn/B+TreeLeafNodeIterable
 
@@ -87,18 +91,21 @@
                       (n/freeze-to-out! out)))
 
 
-(defn b+tree [& {:keys [b key-comparator node-kvstore root]}]
-  (let [b              (or b 1000)
+(defn b+tree [& {:keys [name b key-comparator node-kvstore root key->tree]}]
+  (let [name           (or name (rand-int))
+        b              (or b 1000)
         node-kvstore   (or node-kvstore (kvsch/kvstore-chain (kvsmc/mutable-caching-kvstore 100)
                                                              (kvsa/atom-kvstore)))
-        key-comparator (or key-comparator (kcp/partial-key-comparator))
+        key-comparator (or key-comparator (kcd/default-key-comparator))
         root           (or root (-> (bpn/b+tree-leafnode b :key-comparator key-comparator)
-                                    (swap/swappable-node node-kvstore 0 :key-id "root")))]
-    (map->B+Tree {:b b
+                                    (swap/swappable-node node-kvstore 0 :key-prefix name :key-id "root")))]
+    (map->B+Tree {:name name
+                  :b b
                   :root root
                   :key-comparator key-comparator
                   :leaf-neighbours {}
-                  :node-kvstore node-kvstore})))
+                  :node-kvstore node-kvstore
+                  :key->tree (or key->tree identity)})))
 
 
 
@@ -108,8 +115,11 @@
 
 ;;; insert a few items manually (vector keys):
 #_(let [node-kvstore (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
-      t (-> (b+tree :b 3
-                    :node-kvstore node-kvstore)
+      t (-> (b+tree :name "test1"
+                    :b 3
+                    :node-kvstore node-kvstore
+                    :key->tree (fn [[e v]]
+                                 [e (pr-str v)]))
             (t/insert-tx 1 {[:a 5] 55
                             [:a 9] 99
                             [:a 3] 33
@@ -131,7 +141,7 @@
       r1 (t/lookup t [:a 5])
       r2 (t/lookup t [:c 4])
       r3 (t/lookup t [:b 1])]
-  (println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
+  #_(println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
   (map :value [r1 r2 r3]))
 
 ;;; insert many generated items (numeric/atomic keys):
@@ -151,7 +161,8 @@
                           (swap! ts #(take trees-to-keep
                                            (conj % nt)))
                           nt))
-                      (b+tree :b branching-factor
+                      (b+tree :name "test2"
+                              :b branching-factor
                               :node-kvstore node-kvstore)
                       kvs))
       kv1 (first kvs)
@@ -171,7 +182,8 @@
                        (let [tx (int (/ @i 10))
                              nt (t/insert t tx k v)]
                          nt))
-                     (b+tree :b 3)
+                     (b+tree :name "test3"
+                             :b 3)
                      kvs)
              time)
       t2 (-> (t/insert t1 (inc (int (/ @i 10))) [:b "y" 3] "____")

@@ -1,10 +1,7 @@
 (ns clj-karabiner.tree.bplustree.nodes
   (:refer-clojure :rename {iterate iterate-clj})
   (:require [clj-karabiner.tree :as t]
-            #_[clj-karabiner.external-memory :as em]
-            #_[clj-karabiner.cache :as c]
             [clj-karabiner.keycomparator :as kc]
-            [clj-karabiner.keycomparator.partial-keycomparator :as kcp]
             #_[clojure.tools.logging :as log]
             [clj-karabiner.stats :as stats]))
 
@@ -297,7 +294,7 @@
 
 (defn b+tree-leafnode [b & {:keys [m key-comparator size]}]
   (swap! stats/+stats+ #(update-in % [:nodes :leaf] inc))
-  (let [m (or m (sorted-map-by #(kc/cmp key-comparator %1 %2)))  ;; NOTE: won't be able to (de)serialize this properly
+  (let [m (or m (sorted-map-by #(kc/cmp key-comparator %1 %2)))  ;; NOTE: won't be able to (de)serialize this properly, so it won't work if you use anything else than the default-keycomparator
         size (or size (count m))]
     (map->B+TreeLeafNode {:b    (short b)
                           :size (short size)

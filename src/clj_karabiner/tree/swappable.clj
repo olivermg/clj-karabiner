@@ -6,12 +6,17 @@
 (declare swappable-node)
 
 
+(let [node-id-rnd (java.util.Random.)]
+  (defn new-nodeid []
+    ;;; NOTE:
+    ;;; - .nextLong on an already initialized Random is faster than rand-int
+    ;;; - we can just take a random value as node id, as the identity property is not
+    ;;;   important for nodes. we don't assume that we'll generate the same node
+    ;;;   more than once
+    (.nextLong node-id-rnd)))
+
+
 (defrecord SwappableNode [id]
-
-  t/Node
-
-  (id [this]
-    (:id this))
 
   t/ModifyableNode
 
@@ -32,6 +37,6 @@
 
 
 (defn swappable-node [node-kvstore node]
-  (let [id (t/id node)]
+  (let [id (new-nodeid)]
     (kvs/store node-kvstore id node)
     (map->SwappableNode {:id id})))

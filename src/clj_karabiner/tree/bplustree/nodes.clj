@@ -32,7 +32,7 @@
 ;;;   last-visited state
 
 
-(let [node-id-rnd (java.util.Random.)]
+#_(let [node-id-rnd (java.util.Random.)]
   (defn new-nodeid []
     ;;; NOTE:
     ;;; - .nextLong on an already initialized Random is faster than rand-int
@@ -131,12 +131,7 @@
 
 
 ;;; TODO: we should be able to come up with a more elegant solution instead of ks & vs:
-(defrecord B+TreeInternalNode [id b size ks vs]
-
-  t/Node
-
-  (id [this]
-    (:id this))
+(defrecord B+TreeInternalNode [b size ks vs]
 
   t/ModifyableNode
 
@@ -201,25 +196,18 @@
 
 (defn b+tree-internalnode [b & {:keys [ks vs size]}]
   (swap! stats/+stats+ #(update-in % [:nodes :internal] inc))
-  (let [id (new-nodeid)
-        size (or size (count ks))]
+  (let [size (or size (count ks))]
     ;;; TODO: make sure ks & vs are realized, as otherwise we will run into
     ;;;   stackoverflows as soon as many data items are involved. this is because
     ;;;   lazy sequences will pile up and when realizing such a pile, stack will
     ;;;   explode
-    (map->B+TreeInternalNode {:id   id
-                              :b    b
-                              :size size
+    (map->B+TreeInternalNode {:b    (short b)
+                              :size (short size)
                               :ks   (doall ks)
                               :vs   (doall vs)})))
 
 
-(defrecord B+TreeLeafNode [id b size m]
-
-  t/Node
-
-  (id [this]
-    (:id this))
+(defrecord B+TreeLeafNode [b size m]
 
   t/ModifyableNode
 
@@ -310,9 +298,7 @@
 (defn b+tree-leafnode [b & {:keys [m key-comparator size]}]
   (swap! stats/+stats+ #(update-in % [:nodes :leaf] inc))
   (let [m (or m (sorted-map-by #(kc/cmp key-comparator %1 %2)))  ;; NOTE: won't be able to (de)serialize this properly
-        id (new-nodeid)
         size (or size (count m))]
-    (map->B+TreeLeafNode {:id   id
-                          :b    b
-                          :size size
+    (map->B+TreeLeafNode {:b    (short b)
+                          :size (short size)
                           :m    m})))

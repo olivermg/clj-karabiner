@@ -33,10 +33,14 @@
           [n1 k n2 nlnbs] (t/node-insert root tx k v this)
           t2 (cc/timestamp)
           nroot (if (nil? n2)
-                  (-> (swap/get-node n1 node-kvstore)  ;; NOTE: to flag this node as "root" in kvstore - we'll overwrite potential older root within the same transaction, but that should be ok
-                      (swap/swappable-node node-kvstore tx :key-prefix name :key-id "root"))
-                  (-> (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
-                      (swap/swappable-node node-kvstore tx :key-prefix name :key-id "root")))
+                  (swap/swappable-node node-kvstore tx
+                                       :node (swap/get-node n1 node-kvstore)  ;; NOTE: to flag this node as "root" in kvstore - we'll overwrite potential older root within the same transaction, but that should be ok
+                                       :key-prefix name
+                                       :key-id "root")
+                  (swap/swappable-node node-kvstore tx
+                                       :node (bpn/b+tree-internalnode b :ks [k] :vs [n1 n2] :size 1)
+                                       :key-prefix name
+                                       :key-id "root"))
           r (map->B+Tree {:name name
                           :b b
                           :root nroot
@@ -88,13 +92,20 @@
                       (n/freeze-to-out! out)))
 
 
-(defn b+tree [& {:keys [name b node-kvstore root key->tree]}]
+(defn b+tree [& {:keys [name b node-kvstore root key->tree current-tx]}]
   (let [name           (or name (rand-int))
         b              (or b 1000)
         node-kvstore   (or node-kvstore (kvsch/kvstore-chain (kvsmc/mutable-caching-kvstore 100)
                                                              (kvsa/atom-kvstore)))
-        root           (or root (-> (bpn/b+tree-leafnode b)
-                                    (swap/swappable-node node-kvstore 0 :key-prefix name :key-id "root")))]
+        root           (or root
+                           (and current-tx
+                                (swap/swappable-node node-kvstore current-tx
+                                                     :key-prefix name
+                                                     :key-id "root"))
+                           (swap/swappable-node node-kvstore 0
+                                                :node (bpn/b+tree-leafnode b)
+                                                :key-prefix name
+                                                :key-id "root"))]
     (map->B+Tree {:name name
                   :b b
                   :root root

@@ -20,20 +20,20 @@
 
   t/ModifyableNode
 
-  (insert* [this tx k v {:keys [node-kvstore name] :as t}]
+  (node-insert [this tx k v {:keys [node-kvstore name] :as t}]
     (let [node (kvs/lookup node-kvstore key)
-          [n1 nk n2 lnbs lv] (t/insert node tx k v :tree t)
+          [n1 nk n2 lnbs lv] (t/node-insert node tx k v t)
           sn1 (swappable-node n1 node-kvstore tx :key-prefix name)
           sn2 (and n2 (swappable-node n2 node-kvstore tx :key-prefix name))]
       [sn1 nk sn2 lnbs lv]))
 
   t/LookupableNode
 
-  (lookup* [this k {:keys [node-kvstore] :as t}]
-    (t/lookup (kvs/lookup node-kvstore key) k :tree t))
+  (node-lookup [this k {:keys [node-kvstore] :as t}]
+    (t/node-lookup (kvs/lookup node-kvstore key) k t))
 
-  (lookup-range* [this k {:keys [node-kvstore] :as t}]
-    (t/lookup-range (kvs/lookup node-kvstore key) k :tree t)))
+  (node-lookup-range [this k {:keys [node-kvstore] :as t}]
+    (t/node-lookup-range (kvs/lookup node-kvstore key) k t)))
 
 
 (defn get-node [{:keys [key] :as this} node-kvstore]

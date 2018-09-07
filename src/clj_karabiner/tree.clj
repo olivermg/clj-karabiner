@@ -2,25 +2,34 @@
   (:refer-clojure :rename {load load-clj}))
 
 
-(defprotocol ModifyableNode
-  (insert* [this tx k v tree]))
+(defprotocol ModifyableTree
+  (insert* [this tx k v]))
 
-(defn insert [this tx k v & {:keys [tree]}]
-  (insert* this tx k v (or tree this)))
+(defn insert [this tx k v]
+  (insert* this tx k v))
 
-(defn insert-tx [this tx kv-map & {:keys [tree]}]
+(defn insert-tx [this tx kv-map]
   (reduce (fn [t [k v]]
-            (insert t tx k v :tree tree))
+            (insert t tx k v))
           this
           kv-map))
 
 
+(defprotocol LookupableTree
+  (lookup* [this k])
+  (lookup-range* [this k]))
+
+(defn lookup [this k]
+  (lookup* this k))
+
+(defn lookup-range [this k]
+  (lookup-range* this k))
+
+
+(defprotocol ModifyableNode
+  (node-insert [this tx k v tree]))
+
+
 (defprotocol LookupableNode
-  (lookup* [this k tree])
-  (lookup-range* [this k tree]))
-
-(defn lookup [this k & {:keys [tree]}]
-  (lookup* this k (or tree this)))
-
-(defn lookup-range [this k & {:keys [tree]}]
-  (lookup-range* this k (or tree this)))
+  (node-lookup [this k tree])
+  (node-lookup-range [this k tree]))

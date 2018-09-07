@@ -1,7 +1,6 @@
 (ns clj-karabiner.tree.bplustree.nodes
   (:refer-clojure :rename {iterate iterate-clj})
   (:require [clj-karabiner.tree :as t]
-            [clj-karabiner.keycomparator :as kc]
             #_[clojure.tools.logging :as log]
             [clj-karabiner.stats :as stats]))
 
@@ -68,21 +67,21 @@
     (bs (int (/ coll-size 2)) nil nil)))
 
 
-(defn ksvs-range-search [ks ksize vs k key-comparator]
+(defn ksvs-range-search [ks ksize vs k]
   (let [last-cmpv (volatile! 0)]
     (letfn [(key-fn [i]
               (nth ks i ::inf))
 
             (cmp-fn [i k k*]
-              (vreset! last-cmpv (kc/cmp key-comparator k k*))
-              #_(let [cmpv (kc/cmp key-comparator k k*)]
+              (vreset! last-cmpv (compare k k*))
+              #_(let [cmpv (compare k k*)]
                   (cond
                     (< cmpv 0) (let [k** (nth ks (dec i) nil)]
-                                 (if (or (nil? k**) (> (kc/cmp key-comparator k k**) 0))
+                                 (if (or (nil? k**) (> (compare k k**) 0))
                                    [0 k*]
                                    [-1]))
                     (> cmpv 0) (let [k** (nth ks (inc i) nil)]
-                                 (if (or (nil? k**) (<= (kc/cmp key-comparator k k**) 0))
+                                 (if (or (nil? k**) (<= (compare k k**) 0))
                                    [0 (or k** ::inf)]
                                    [1]))
                     true       [0 k*])))
@@ -92,7 +91,7 @@
                 [k* (nth vs i) ki])
               #_(let [i* (cond
                            (= k** ::inf)                         (inc i)
-                           (<= (kc/cmp key-comparator k** k*) 0) i
+                           (<= (compare k** k*) 0) i
                            true                                  (inc i))]
                   [k** (nth vs i*) i i*]))
 
@@ -106,9 +105,9 @@
       (binary-search ksize cmp-fn key-fn value-fn k :not-found not-found-fn))))
 
 
-(defn ksvs-split [ks ksize vs k key-comparator]
-  (let [;;;[ks1 ks2] (split-with #(< (kc/cmp key-comparator % k) 0) ks)
-        [_ _ split-i]  (ksvs-range-search ks ksize vs k key-comparator)
+(defn ksvs-split [ks ksize vs k]
+  (let [;;;[ks1 ks2] (split-with #(< (compare % k) 0) ks)
+        [_ _ split-i]  (ksvs-range-search ks ksize vs k)
         [ks1 ks2]   (split-at split-i ks)
         ;;;[vs1 vs2] (split-at (count ks1) vs)
         [vs1 vs2]   (split-at split-i vs)
@@ -116,9 +115,9 @@
     [[ks1 ks2] [vs1 vs2]]))
 
 
-(defn lookup-local [{:keys [size ks vs] :as this} k key-comparator]
+(defn lookup-local [{:keys [size ks vs] :as this} k]
   (swap! stats/+stats+ #(update-in % [:lookups :local] inc))
-  (let [[k* v* _]   (ksvs-range-search ks size vs k key-comparator)]
+  (let [[k* v* _]   (ksvs-range-search ks size vs k)]
     {:actual-k k*
      :value v*
      :values [v*]}))
@@ -132,7 +131,7 @@
 
   t/ModifyableNode
 
-  (insert* [this tx k v {:keys [key-comparator] :as t}]
+  (node-insert [this tx k v t]
     (swap! stats/+stats+ #(update-in % [:inserts :internal] inc))
     #_(println " => INSERT* INTERNAL" k)
     (letfn [(split [{:keys [b ks vs size] :as n}]
@@ -147,8 +146,8 @@
 
             (ins [{:keys [b ks vs size] :as n} k v]
               (if-not (= k ::inf)
-                (let [[[ks1 ks2] [vs1 vs2]] (ksvs-split ks size vs k key-comparator)
-                      replace?  (= (kc/cmp key-comparator (first ks2) k) 0)
+                (let [[[ks1 ks2] [vs1 vs2]] (ksvs-split ks size vs k)
+                      replace?  (= (compare (first ks2) k) 0)
                       ks2       (if replace? (rest ks2) ks2)
                       vs2       (if replace? (rest vs2) vs2)
                       nsize     (if replace? size (inc size))
@@ -161,8 +160,8 @@
                   nn)))]
 
       (let [{childk :actual-k
-             childv :value}         (lookup-local this k key-comparator)
-            [n1 nk n2 nlnbs]        (t/insert childv tx k v :tree t)
+             childv :value}         (lookup-local this k)
+            [n1 nk n2 nlnbs]        (t/node-insert childv tx k v t)
             nn                      (if (nil? n2)
                                       (ins this childk n1)
                                       (-> (ins this nk n1)
@@ -174,16 +173,16 @@
 
   t/LookupableNode
 
-  (lookup* [this k {:keys [key-comparator] :as t}]
+  (node-lookup [this k t]
     (swap! stats/+stats+ #(update-in % [:lookups :internal] inc))
     #_(println " => LOOKUP* INTERNAL" k)
-    (let [{child :value} (lookup-local this k key-comparator)]
-      (t/lookup child k :tree t)))
+    (let [{child :value} (lookup-local this k)]
+      (t/node-lookup child k t)))
 
-  (lookup-range* [this k {:keys [key-comparator] :as t}]
+  (node-lookup-range [this k t]
     #_(println " => LOOKUP-RANGE* INTERNAL" k)
-    (let [{child :value} (lookup-local this k key-comparator)]
-      (t/lookup-range child k :tree t)))
+    (let [{child :value} (lookup-local this k)]
+      (t/node-lookup-range child k t)))
 
   B+TreeLeafNodeIterable
 
@@ -208,7 +207,7 @@
 
   t/ModifyableNode
 
-  (insert* [this tx k v {:keys [leaf-neighbours] :as t}]
+  (node-insert [this tx k v {:keys [leaf-neighbours] :as t}]
     (swap! stats/+stats+ #(update-in % [:inserts :leaf] inc))
     #_(println " => INSERT* LEAF" k)
     (letfn [(insert-leaf-neighbours [n1]
@@ -262,7 +261,7 @@
 
   t/LookupableNode
 
-  (lookup* [this k t]
+  (node-lookup [this k t]
     (swap! stats/+stats+ #(update-in % [:lookups :leaf] inc))
     #_(println " => LOOKUP* LEAF" k)
     (let [value (get m k)]
@@ -270,21 +269,28 @@
        :value value
        :values [value]}))
 
-  (lookup-range* [this k {:keys [key-comparator leaf-neighbours] :as t}]
-    #_(println " => LOOKUP-RANGE* LEAF" k)
-    (when (>= (kc/cmp key-comparator k (-> m keys first)) 0)
-      (let [matching-keys (->> (keys m)
-                               (filter #(= (kc/cmp key-comparator % k) 0)))
-            {restvs :values} (when-let [next (-> (get leaf-neighbours this) :next)]
-                               (t/lookup-range next k :tree t))
-            values (lazy-seq
-                    (concat (-> (select-keys m matching-keys)
-                                vals
-                                vec)
-                            restvs))]
-        {:actual-k k
-         :values values
-         :value (first values)})))
+  (node-lookup-range [this k {:keys [leaf-neighbours] :as t}]
+    #_(println " => LOOKUP-RANGE* LEAF" k (-> m keys first))
+    (letfn [(cmp [a b]
+              (if (and (sequential? a) (sequential? b))
+                (let [minlen (min (count a) (count b))
+                      a (->> a (take minlen) vec)
+                      b (->> b (take minlen) vec)]
+                  (compare a b))
+                (compare a b)))]
+      (when (>= (cmp k (-> m keys first)) 0)
+        (let [matching-keys (->> (keys m)
+                                 (filter #(= (cmp % k) 0)))
+              {restvs :values} (when-let [next (-> (get leaf-neighbours this) :next)]
+                                 (t/node-lookup-range next k t))
+              values (lazy-seq
+                      (concat (-> (select-keys m matching-keys)
+                                  vals
+                                  vec)
+                              restvs))]
+          {:actual-k k
+           :values values
+           :value (first values)}))))
 
   B+TreeLeafNodeIterable
 
@@ -292,9 +298,9 @@
     [this]))
 
 
-(defn b+tree-leafnode [b & {:keys [m key-comparator size]}]
+(defn b+tree-leafnode [b & {:keys [m size]}]
   (swap! stats/+stats+ #(update-in % [:nodes :leaf] inc))
-  (let [m (or m (sorted-map-by #(kc/cmp key-comparator %1 %2)))  ;; NOTE: won't be able to (de)serialize this properly, so it won't work if you use anything else than the default-keycomparator
+  (let [m (or m (sorted-map))
         size (or size (count m))]
     (map->B+TreeLeafNode {:b    (short b)
                           :size (short size)

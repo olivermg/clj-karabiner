@@ -7,9 +7,6 @@
             [clj-karabiner.kvstore.atom :as kvsa]
             [clj-karabiner.kvstore.mutable-cache :as kvsmc]
             [clj-karabiner.kvstore.chain :as kvsch]
-            [clj-karabiner.keycomparator :as kc]
-            #_[clj-karabiner.keycomparator.partial-keycomparator :as kcp]
-            [clj-karabiner.keycomparator.default :as kcd]
             #_[clojure.tools.logging :as log]
             [criterium.core :as cc]
             #_[taoensso.nippy :as n]))
@@ -25,15 +22,15 @@
                        :prevheap 0}))
 
 
-(defrecord B+Tree [name b root key-comparator leaf-neighbours node-kvstore key->tree]
+(defrecord B+Tree [name b root leaf-neighbours node-kvstore key->tree]
 
-  t/ModifyableNode
+  t/ModifyableTree
 
-  (insert* [this tx k v _]
+  (insert* [this tx k v]
     #_(println "=== INSERT* ===" k v)
     (let [t1 (cc/timestamp)
           k (key->tree k)
-          [n1 k n2 nlnbs] (t/insert root tx k v :tree this)
+          [n1 k n2 nlnbs] (t/node-insert root tx k v this)
           t2 (cc/timestamp)
           nroot (if (nil? n2)
                   (-> (swap/get-node n1 node-kvstore)  ;; NOTE: to flag this node as "root" in kvstore - we'll overwrite potential older root within the same transaction, but that should be ok
@@ -43,7 +40,6 @@
           r (map->B+Tree {:name name
                           :b b
                           :root nroot
-                          :key-comparator key-comparator
                           :leaf-neighbours nlnbs
                           :node-kvstore node-kvstore
                           :key->tree key->tree})]
@@ -69,14 +65,15 @@
                    :prevheap heap})))
       r))
 
-  t/LookupableNode
+  t/LookupableTree
 
-  (lookup* [this k _]
+  (lookup* [this k]
     #_(println "=== LOOKUP* ===" k)
-    (t/lookup root (key->tree k) :tree this))
+    (t/node-lookup root (key->tree k) this))
 
-  (lookup-range* [this k _]
-    (t/lookup-range root (key->tree k) :tree this))
+  (lookup-range* [this k]
+    #_(println "=== LOOKUP-RANGE* ===" k (key->tree k))
+    (t/node-lookup-range root (key->tree k) this))
 
   bpn/B+TreeLeafNodeIterable
 
@@ -91,18 +88,16 @@
                       (n/freeze-to-out! out)))
 
 
-(defn b+tree [& {:keys [name b key-comparator node-kvstore root key->tree]}]
+(defn b+tree [& {:keys [name b node-kvstore root key->tree]}]
   (let [name           (or name (rand-int))
         b              (or b 1000)
         node-kvstore   (or node-kvstore (kvsch/kvstore-chain (kvsmc/mutable-caching-kvstore 100)
                                                              (kvsa/atom-kvstore)))
-        key-comparator (or key-comparator (kcd/default-key-comparator))
-        root           (or root (-> (bpn/b+tree-leafnode b :key-comparator key-comparator)
+        root           (or root (-> (bpn/b+tree-leafnode b)
                                     (swap/swappable-node node-kvstore 0 :key-prefix name :key-id "root")))]
     (map->B+Tree {:name name
                   :b b
                   :root root
-                  :key-comparator key-comparator
                   :leaf-neighbours {}
                   :node-kvstore node-kvstore
                   :key->tree (or key->tree identity)})))
@@ -141,8 +136,7 @@
       r1 (t/lookup t [:a 5])
       r2 (t/lookup t [:c 4])
       r3 (t/lookup t [:b 1])]
-  #_(println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
-  (map :value [r1 r2 r3]))
+    (map :value [r1 r2 r3]))
 
 ;;; insert many generated items (numeric/atomic keys):
 #_(let [trees-to-keep 1
@@ -168,7 +162,6 @@
       kv1 (first kvs)
       k1 (first kv1)]
   #_(Thread/sleep 120000)
-  (println "KEY-COMPARATOR CNT" (kcp/get-cnt (:key-comparator t)))
   [kv1 (count @ts) (time (t/lookup t k1))])
 
 ;;; testing range lookup (vector keys):
@@ -188,8 +181,9 @@
              time)
       t2 (-> (t/insert t1 (inc (int (/ @i 10))) [:b "y" 3] "____")
              time)]
-  #_(clojure.pprint/pprint t2)
-  [(time (:values (t/lookup-range t1 [:b "y"])))
+  #_(clojure.pprint/pprint (:root t2))
+  [(:value (t/lookup t1 [:b "y" 1]))
+   (time (:values (t/lookup-range t1 [:b "y"])))
    (time (:values (t/lookup-range t2 [:b "y"])))])
 
 

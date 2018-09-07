@@ -2,9 +2,6 @@
   (:require [clojure.test :refer :all]
             [clj-karabiner.tree.bplustree.nodes :refer :all]
             [clj-karabiner.tree.bplustree :as bpt]
-            [clj-karabiner.keycomparator.partial-keycomparator :as pkc]
-            #_[clj-karabiner.kvstore.atom :as kva]
-            #_[clj-karabiner.cache :as c]
             [clojure.pprint]))
 
 
@@ -32,48 +29,45 @@
                :vs vs
                :size (count ks)}))]
 
-    (let [this (build-this)
-          kc (pkc/partial-key-comparator)]
+    (let [this (build-this)]
       (testing "min lookup"
-        (let [{k :actual-k v :value} (lookup-local this 1 kc)]
+        (let [{k :actual-k v :value} (lookup-local this 1)]
           (is (= 2 k))
           (is (= [1 2] v))))
       (testing "lookup 1"
-        (let [{k :actual-k v :value} (lookup-local this 7 kc)]
+        (let [{k :actual-k v :value} (lookup-local this 7)]
           (is (= 9 k))
           (is (= [7 8 9] v))))
       (testing "lookup 2"
-        (let [{k :actual-k v :value} (lookup-local this 4 kc)]
+        (let [{k :actual-k v :value} (lookup-local this 4)]
           (is (= 6 k))
           (is (= [3 4 5 6] v))))
       (testing "lookup 3"
-        (let [{k :actual-k v :value} (lookup-local this 23 kc)]
+        (let [{k :actual-k v :value} (lookup-local this 23)]
           (is (= 24 k))
           (is (= [23 24] v))))
       (testing "lookup 4"
-        (let [{k :actual-k v :value} (lookup-local this 29 kc)]
+        (let [{k :actual-k v :value} (lookup-local this 29)]
           (is (= 30 k))
           (is (= [28 29 30] v))))
       (testing "max lookup"
-        (let [{k :actual-k v :value} (lookup-local this 321 kc)]
+        (let [{k :actual-k v :value} (lookup-local this 321)]
           (is (= :clj-karabiner.tree.bplustree.nodes/inf k))
           (is (= [31 32 33] v)))))
 
-    (let [this (build-this-2)
-          kc (pkc/partial-key-comparator)]
+    (let [this (build-this-2)]
       (testing "max lookup"
-        (let [{k :actual-k v :value} (lookup-local this [:a 2] kc)]
+        (let [{k :actual-k v :value} (lookup-local this [:a 2])]
           (is (= [:a 4] k))
           (is (= {:b 3 :size 2 :m {[:a 3] 33 [:a 4] 44}} v)))))
 
-    (let [this (build-this-3)
-          kc (pkc/partial-key-comparator)]
+    (let [this (build-this-3)]
       (testing "lookup 1"
-        (let [{k :actual-k v :value} (lookup-local this 1 kc)]
+        (let [{k :actual-k v :value} (lookup-local this 1)]
           (is (= 3 k))
           (is (= [1 2 3] v))))
       (testing "lookup 2"
-        (let [{k :actual-k v :value} (lookup-local this 5 kc)]
+        (let [{k :actual-k v :value} (lookup-local this 5)]
           (is (= :clj-karabiner.tree.bplustree.nodes/inf k))
           (is (= [4 5 6] v)))))))
 
@@ -83,8 +77,7 @@
     ;;; TODO: make this a real test
     (let [ks [     2         6       9             13       15          18       20       22       24          27          30]
           vs [[1 2] [3 4 5 6] [7 8 9] [10 11 12 13]  [14 15]  [16 17 18]  [19 20]  [21 22]  [23 24]  [25 26 27]  [28 29 30]  [31 32 33]]
-          kc (pkc/partial-key-comparator)
-          results (mapv #(into [%] (ksvs-range-search ks (count ks) vs % kc))
+          results (mapv #(into [%] (ksvs-range-search ks (count ks) vs %))
                         [-2 0 1 2 3 4 5 6 7 8 9 12 15 18 22 28 30 33 1000])]
       (clojure.pprint/pprint results)
       (is (every? vector? results)))))

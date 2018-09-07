@@ -67,6 +67,7 @@
                    :gcsum (if-not gc? gcsum (+ gcsum td))
                    :gccount gccount
                    :prevheap heap})))
+      (kvs/store node-kvstore (str name ":current-tx") tx)
       r))
 
   t/LookupableTree
@@ -97,6 +98,7 @@
         b              (or b 1000)
         node-kvstore   (or node-kvstore (kvsch/kvstore-chain (kvsmc/mutable-caching-kvstore 100)
                                                              (kvsa/atom-kvstore)))
+        current-tx     (or current-tx (kvs/lookup node-kvstore (str name ":current-tx")))
         root           (or root
                            (and current-tx
                                 (swap/swappable-node node-kvstore current-tx
@@ -148,6 +150,20 @@
       r2 (t/lookup t [:c 4])
       r3 (t/lookup t [:b 1])]
     (map :value [r1 r2 r3]))
+
+;;; load above tree from node-kvstore:
+#_(let [node-kvstore (clj-karabiner.kvstore.redis/redis-kvstore "redis://localhost")
+      t (b+tree :name "test1"
+                :b 3
+                :node-kvstore node-kvstore
+                :key->tree (fn [[e v]]
+                             [e (pr-str v)])
+                ;;;:current-tx 3
+                )
+      r1 (t/lookup t [:a 5])
+      r2 (t/lookup t [:c 4])
+      r3 (t/lookup t [:b 1])]
+  (map :value [r1 r2 r3]))
 
 ;;; insert many generated items (numeric/atomic keys):
 #_(let [trees-to-keep 1

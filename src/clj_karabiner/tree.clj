@@ -26,6 +26,10 @@
   (lookup-range* this k))
 
 
+(defprotocol SnapshotableTree
+  (snapshot [this]))
+
+
 (defprotocol ModifyableNode
   (node-insert [this tx k v tree]))
 

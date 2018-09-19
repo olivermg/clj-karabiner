@@ -1,6 +1,7 @@
 (ns clj-karabiner.fact-database
   (:refer-clojure :rename {load load-clj})
-  (:require [taoensso.nippy :as n]
+  (:require [clojure.tools.logging :refer [trace debug info warn error fatal]]
+            [taoensso.nippy :as n]
             [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree :as bp]
             [clj-karabiner.tree.swappable :as s]
@@ -69,7 +70,7 @@
 
 
 (defn rebuild-indices [{:keys [generation-count storage-backend eavts aevts vaets eas] :as this}]
-  (println "REBUILD-INDICES")
+  (trace "REBUILD-INDICES")
   (letfn [(tx-aggregating-xf []
             (fn [xf]
               (let [prev-t (volatile! ::none)
@@ -110,7 +111,7 @@
 
 
 #_(defn- thaw-indices [{:keys [index-freeze-kvstore] :as this}]
-  (println "THAW-INDICES")
+  (trace "THAW-INDICES")
   (when index-freeze-kvstore
     (letfn [(thaw-index [k]
               (when-let [v (kvs/lookup index-freeze-kvstore k)]

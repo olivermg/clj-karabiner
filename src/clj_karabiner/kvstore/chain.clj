@@ -1,5 +1,6 @@
 (ns clj-karabiner.kvstore.chain
-  (:require [clj-karabiner.kvstore :as kvs]))
+  (:require [clojure.tools.logging :refer [trace debug info warn error fatal]]
+            [clj-karabiner.kvstore :as kvs]))
 
 
 (defrecord KvStoreChain [kvstores]
@@ -16,9 +17,9 @@
       (if store
         (let [v (kvs/lookup store k ::not-found)]
           (if-not (= v ::not-found)
-            (do #_(println "HIT in store" i "for key" k)
+            (do #_(trace "HIT in store" i "for key" k)
                 v)
-            (do #_(println "MISS in store" i "for key" k)
+            (do #_(trace "MISS in store" i "for key" k)
                 (recur stores (inc i)))))
         not-found))))
 

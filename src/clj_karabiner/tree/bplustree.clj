@@ -1,6 +1,7 @@
 (ns clj-karabiner.tree.bplustree
   (:refer-clojure :rename {iterate iterate-clj})
-  (:require [clj-karabiner.tree :as t]
+  (:require [clojure.tools.logging :refer [trace debug info warn error fatal]]
+            [clj-karabiner.tree :as t]
             [clj-karabiner.tree.bplustree.nodes :as bpn]
             [clj-karabiner.tree.swappable :as swap]
             [clj-karabiner.kvstore :as kvs]
@@ -27,7 +28,7 @@
   t/ModifyableTree
 
   (insert* [this tx k v]
-    #_(println "=== INSERT* ===" k v)
+    #_(trace "=== INSERT* ===" k v)
     (let [t1 (cc/timestamp)
           k (key->tree k)
           [n1 k n2 nlnbs] (t/node-insert root tx k v this)
@@ -55,10 +56,10 @@
                       gc? (< heap prevheap)
                       gccount (if-not gc?
                                 gccount
-                                (do (println "GC  " (long (/ t1 1000)))
+                                (do (trace "GC  " (long (/ t1 1000)))
                                     (inc gccount)))]
                   (when (> td 100000)
-                    (println "SLOW" (long (/ t1 1000)) td))
+                    (trace "SLOW" (long (/ t1 1000)) td))
                   {:count count
                    :min (clojure.core/min min td)
                    :max (clojure.core/max max td)
@@ -73,11 +74,11 @@
   t/LookupableTree
 
   (lookup* [this k]
-    #_(println "=== LOOKUP* ===" k)
+    #_(trace "=== LOOKUP* ===" k)
     (t/node-lookup root (key->tree k) this))
 
   (lookup-range* [this k]
-    #_(println "=== LOOKUP-RANGE* ===" k (key->tree k))
+    #_(trace "=== LOOKUP-RANGE* ===" k (key->tree k))
     (t/node-lookup-range root (key->tree k) this))
 
   bpn/B+TreeLeafNodeIterable
@@ -228,7 +229,7 @@
         (tr/write writer {:a 11})
         (tr/write writer [11 22 33])
         (tr/write writer (->Foo 22 33))
-        (println (.toString out))
+        (trace (.toString out))
         (let [in (java.io.ByteArrayInputStream. (.toByteArray out))
               reader (tr/reader in :json {:handlers {"Foo" (reify com.cognitect.transit.ReadHandler
                                                             (fromRep [_ rep]

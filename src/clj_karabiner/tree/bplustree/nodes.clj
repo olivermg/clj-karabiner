@@ -1,6 +1,7 @@
 (ns clj-karabiner.tree.bplustree.nodes
   (:refer-clojure :rename {iterate iterate-clj})
-  (:require [clj-karabiner.tree :as t]
+  (:require [clojure.tools.logging :refer [trace debug info warn error fatal]]
+            [clj-karabiner.tree :as t]
             #_[clojure.tools.logging :as log]
             [clj-karabiner.stats :as stats]))
 
@@ -50,12 +51,12 @@
 
 
 (defn- cmp [a b]
-  #_(println "CMP1" a b)
+  #_(trace "CMP1" a b)
   (if (and (sequential? a) (sequential? b))
     (let [minlen (min (count a) (count b))
           a (->> a (take minlen) vec)
           b (->> b (take minlen) vec)]
-      #_(println "CMP2" a b)
+      #_(trace "CMP2" a b)
       (compare a b))
     (compare a b)))
 
@@ -144,7 +145,7 @@
 
   (node-insert [this tx k v t]
     (swap! stats/+stats+ #(update-in % [:inserts :internal] inc))
-    #_(println " => INSERT* INTERNAL" k)
+    #_(trace " => INSERT* INTERNAL" k)
     (letfn [(split [{:keys [b ks vs size] :as n}]
               (let [partition-size  (-> size (/ 2) Math/ceil int)
                     [ks1 ks2]       (partition-all partition-size ks)
@@ -186,12 +187,12 @@
 
   (node-lookup [this k t]
     (swap! stats/+stats+ #(update-in % [:lookups :internal] inc))
-    #_(println " => LOOKUP* INTERNAL" k)
+    #_(trace " => LOOKUP* INTERNAL" k)
     (let [{child :value} (lookup-local this k)]
       (t/node-lookup child k t)))
 
   (node-lookup-range [this k t]
-    #_(println " => LOOKUP-RANGE* INTERNAL" k)
+    #_(trace " => LOOKUP-RANGE* INTERNAL" k)
     (let [{child :value} (lookup-local this k)]
       (t/node-lookup-range child k t)))
 
@@ -220,7 +221,7 @@
 
   (node-insert [this tx k v {:keys [leaf-neighbours] :as t}]
     (swap! stats/+stats+ #(update-in % [:inserts :leaf] inc))
-    #_(println " => INSERT* LEAF" k)
+    #_(trace " => INSERT* LEAF" k)
     (letfn [(insert-leaf-neighbours [n1]
               (let [{pleaf :prev nleaf :next} (get leaf-neighbours this)
                     {ppleaf :prev}            (when-not (nil? pleaf)
@@ -274,14 +275,14 @@
 
   (node-lookup [this k t]
     (swap! stats/+stats+ #(update-in % [:lookups :leaf] inc))
-    #_(println " => LOOKUP* LEAF" k)
+    #_(trace " => LOOKUP* LEAF" k)
     (let [value (get m k)]
       {:actual-k k
        :value value
        :values [value]}))
 
   (node-lookup-range [this k {:keys [leaf-neighbours] :as t}]
-    #_(println " => LOOKUP-RANGE* LEAF" k (-> m keys first))
+    #_(trace " => LOOKUP-RANGE* LEAF" k (-> m keys first))
     (when (>= (cmp k (-> m keys first)) 0)
       (let [matching-keys (->> (keys m)
                                (filter #(= (cmp % k) 0)))

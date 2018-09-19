@@ -1,5 +1,6 @@
 (ns clj-karabiner.storage-backend.kafka
-  (:require [clojure.string :as str]
+  (:require [clojure.tools.logging :refer [trace debug info warn error fatal]]
+            [clojure.string :as str]
             [cognitect.transit :as t]
             #_[clojure.core.async :refer [go go-loop <! >! put!] :as a]
             [clj-karabiner.storage-backend :as sb]
@@ -92,7 +93,7 @@
                 position)))
         (letfn [(get-chunks [cnt]
                   (lazy-seq
-                   (println "I/O" cnt)
+                   (trace "I/O" cnt)
                    (let [crs (.poll consumer 1000)]
                      (if (and crs (> (.count crs) 0))
                        (concat (mapv (fn [cr]
@@ -209,10 +210,10 @@
       facts (doall (sb/load be))
       ;;;pos0 @(:current-position be)
       #_pos1 #_(do (sb/append be [:foo/bar :name "foobar" 111])
-               (sb/append be [:foo/baz :name "foobaz" 222]))
+                   (sb/append be [:foo/baz :name "foobaz" 222]))
       ]
-  #_(println "POS0" pos0)
-  #_(println "POS1" pos1)
-  #_(println (sb/load-from-position be pos0))
-  (println facts)
+  #_(trace "POS0" pos0)
+  #_(trace "POS1" pos1)
+  #_(trace (sb/load-from-position be pos0))
+  (trace facts)
   (count facts))

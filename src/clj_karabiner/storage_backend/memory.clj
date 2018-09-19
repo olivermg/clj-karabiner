@@ -11,8 +11,8 @@
 
   sb/LoadableStorageBackend
 
-  (load [this]
-    (lazy-seq @storage))
+  (load-from-position [this position]
+    (drop (or position 0) @storage))
 
   sb/AppendableStorageBackend
 

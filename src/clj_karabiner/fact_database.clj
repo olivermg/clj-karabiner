@@ -10,7 +10,7 @@
 
 
 ;;; NOTE: we don't need an avet index, as we can use the vaet index for [a v ...] lookups:
-(defrecord FactDatabase [storage-backend generation-count key-comparator node-cache node-storage
+(defrecord FactDatabase [storage-backend generation-count node-cache node-storage
                          eavts aevts vaets eas current-t current-storage-position])
 
 
@@ -168,7 +168,6 @@
 
 
 (defn database [storage-backend & {:keys [branching-factor
-                                          key-comparator
                                           node-kvstore
                                           generation-count]
                                    :or {generation-count 1000}}]
@@ -176,15 +175,15 @@
   (letfn [(make-index [name & [v-idx]]
             (bp/b+tree :name name
                        :b branching-factor
-                       :key-comparator key-comparator
                        :node-kvstore node-kvstore
                        :key->tree (if v-idx
-                                    #(update % v-idx pr-str)
+                                    #(if (contains? % v-idx)
+                                       (update % v-idx pr-str)
+                                       %)
                                     identity)))]
 
     (-> (map->FactDatabase {:storage-backend storage-backend
                             :generation-count generation-count
-                            :key-comparator key-comparator
                             :node-kvstore node-kvstore
                             :eavts (list (make-index "eavt" 2))
                             :aevts (list (make-index "aevt" 2))
@@ -224,8 +223,7 @@
 ;;;
 
 #_(def db1
-  (let [kcmp (clj-karabiner.keycomparator.default/default-key-comparator)
-        #_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
+  (let [#_be #_(clj-karabiner.storage-backend.memory/memory-storage-backend
                 [[:person/e0 :a1 :v1.1 1]
                  [:person/e0 :a2 :v2.1 1]
                  [:person/e0 :a3 :v3.1 1]
@@ -247,9 +245,8 @@
                 (database be
                           :generation-count 3
                           :branching-factor 100
-                          :node-kvstore nkvs
-                          :key-comparator kcmp)
-                (rebuild-indices)
+                          :node-kvstore nkvs)
+                #_(rebuild-indices)
                 #_(append [[:person/e1 :a1 :v1.1]
                            [:person/e1 :a2 :v2.1]])
                 #_(append [[:person/e1 :a1 :v1.2]
@@ -263,6 +260,8 @@
      #_(clj-karabiner.fact-database.dbvalue/query-facts db-val1 [nil :a3 :v3.1])
      #_(clj-karabiner.fact-database.dbvalue/query db-val1 [nil :a1 :v1.1]
                                                   :project-full-entities? true)
-     #_(clj-karabiner.fact-database.dbvalue/query db-val1 [nil :length 2]
+     #_(clj-karabiner.fact-database.dbvalue/query db-val1 [:artist/id187 nil nil]
                                                   :project-full-entities? true)
-     db)))
+     (clj-karabiner.fact-database.dbvalue/query db-val1 [nil :length 0]
+                                                :project-full-entities? true)
+     #_db)))

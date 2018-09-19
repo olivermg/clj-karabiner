@@ -49,6 +49,17 @@
 
 
 
+(defn- cmp [a b]
+  #_(println "CMP1" a b)
+  (if (and (sequential? a) (sequential? b))
+    (let [minlen (min (count a) (count b))
+          a (->> a (take minlen) vec)
+          b (->> b (take minlen) vec)]
+      #_(println "CMP2" a b)
+      (compare a b))
+    (compare a b)))
+
+
 (defn binary-search [coll-size cmp-fn key-fn value-fn k & {:keys [not-found]}]
   (letfn [(bs [i prev-i pprev-i]
             (let [step    (let [step* (/ (- i (or prev-i 0)) 2)]  ;; NOTE: using Math/abs is slow here
@@ -73,7 +84,7 @@
               (nth ks i ::inf))
 
             (cmp-fn [i k k*]
-              (vreset! last-cmpv (compare k k*))
+              (vreset! last-cmpv (cmp k k*))
               #_(let [cmpv (compare k k*)]
                   (cond
                     (< cmpv 0) (let [k** (nth ks (dec i) nil)]
@@ -147,7 +158,7 @@
             (ins [{:keys [b ks vs size] :as n} k v]
               (if-not (= k ::inf)
                 (let [[[ks1 ks2] [vs1 vs2]] (ksvs-split ks size vs k)
-                      replace?  (= (compare (first ks2) k) 0)
+                      replace?  (= (cmp (first ks2) k) 0)
                       ks2       (if replace? (rest ks2) ks2)
                       vs2       (if replace? (rest vs2) vs2)
                       nsize     (if replace? size (inc size))
@@ -271,26 +282,19 @@
 
   (node-lookup-range [this k {:keys [leaf-neighbours] :as t}]
     #_(println " => LOOKUP-RANGE* LEAF" k (-> m keys first))
-    (letfn [(cmp [a b]
-              (if (and (sequential? a) (sequential? b))
-                (let [minlen (min (count a) (count b))
-                      a (->> a (take minlen) vec)
-                      b (->> b (take minlen) vec)]
-                  (compare a b))
-                (compare a b)))]
-      (when (>= (cmp k (-> m keys first)) 0)
-        (let [matching-keys (->> (keys m)
-                                 (filter #(= (cmp % k) 0)))
-              {restvs :values} (when-let [next (-> (get leaf-neighbours this) :next)]
-                                 (t/node-lookup-range next k t))
-              values (lazy-seq
-                      (concat (-> (select-keys m matching-keys)
-                                  vals
-                                  vec)
-                              restvs))]
-          {:actual-k k
-           :values values
-           :value (first values)}))))
+    (when (>= (cmp k (-> m keys first)) 0)
+      (let [matching-keys (->> (keys m)
+                               (filter #(= (cmp % k) 0)))
+            {restvs :values} (when-let [next (-> (get leaf-neighbours this) :next)]
+                               (t/node-lookup-range next k t))
+            values (lazy-seq
+                    (concat (-> (select-keys m matching-keys)
+                                vals
+                                vec)
+                            restvs))]
+        {:actual-k k
+         :values values
+         :value (first values)})))
 
   B+TreeLeafNodeIterable
 

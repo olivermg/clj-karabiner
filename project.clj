@@ -26,4 +26,15 @@
                                   [org.apache.logging.log4j/log4j-core "2.11.1"]]
                    :source-paths ["dev"]
                    :repl-options {:init-ns user}
-                   :java-opts ["-Dlog4j.configurationFile=./resources/log4j2-dev.properties"]}})
+                   :java-opts ["-Dlog4j.configurationFile=./resources/log4j2-dev.properties"]}}
+
+  :release-tasks [["vcs" "assert-committed"]
+                  ["change" "version" "leiningen.release/bump-version" "release"]
+                  ["vcs" "commit"]
+                  ["vcs" "tag"]
+                  #_["deploy"]
+                  #_["clean"]
+                  #_["uberjar"]
+                  ["change" "version" "leiningen.release/bump-version"]
+                  ["vcs" "commit"]
+                  #_["vcs" "push"]])

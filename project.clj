@@ -1,4 +1,4 @@
-(defproject clj-karabiner "0.1.1-SNAPSHOT"
+(defproject clj-karabiner "0.1.1"
   :description "Useful custom data structures"
   :url "http://github.com/olivermg/clj-karabiner"
   :license {:name "The MIT License"

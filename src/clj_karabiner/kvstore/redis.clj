@@ -20,3 +20,11 @@
 (defn redis-kvstore [uri]
   (map->RedisKvStore {:conn {:pool {}
                              :spec {:uri uri}}}))
+
+
+(defn start [this]
+  this)
+
+
+(defn stop [this]
+  this)

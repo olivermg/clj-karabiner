@@ -26,3 +26,11 @@
 
 (defn kvstore-chain [& kvstores]
   (map->KvStoreChain {:kvstores kvstores}))
+
+
+(defn start [this]
+  this)
+
+
+(defn stop [this]
+  this)

@@ -170,8 +170,14 @@
 
 (defn database [storage-backend & {:keys [branching-factor
                                           node-kvstore
-                                          generation-count]
-                                   :or {generation-count 1000}}]
+                                          generation-count]}]
+  (map->FactDatabase {:storage-backend  storage-backend
+                      :generation-count (or generation-count 1000)
+                      :node-kvstore     node-kvstore
+                      :current-t        0}))
+
+
+(defn start [{:keys [branching-factor node-kvstore] :as this}]
 
   (letfn [(make-index [name & [v-idx]]
             (bp/b+tree :name name
@@ -183,15 +189,19 @@
                                        %)
                                     identity)))]
 
-    (-> (map->FactDatabase {:storage-backend storage-backend
-                            :generation-count generation-count
-                            :node-kvstore node-kvstore
-                            :eavts (list (make-index "eavt" 2))
-                            :aevts (list (make-index "aevt" 2))
-                            :vaets (list (make-index "vaet" 0))
-                            :eas   (list (make-index "ea"))
-                            :current-t 0})
-        #_(restore-indices))))
+    (merge this {:eavts (list (make-index "eavt" 2))
+                 :aevts (list (make-index "aevt" 2))
+                 :vaets (list (make-index "vaet" 0))
+                 :eas   (list (make-index "ea"))
+                 :current-t 0})))
+
+
+(defn stop [this]
+  (merge this {:eavts nil
+               :aevts nil
+               :vaets nil
+               :eas   nil
+               :current-t 0}))
 
 
 #_(defn load-indices [{:keys [node-kvstore] :as this}]
@@ -247,6 +257,7 @@
                           :generation-count 3
                           :branching-factor 100
                           :node-kvstore nkvs)
+                start
                 #_(rebuild-indices)
                 #_(append [[:person/e1 :a1 :v1.1]
                            [:person/e1 :a2 :v2.1]])

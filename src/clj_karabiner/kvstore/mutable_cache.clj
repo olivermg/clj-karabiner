@@ -22,3 +22,11 @@
 (defn mutable-caching-kvstore [size]
   (map->MutableCachingKvStore {:l (atom (ddl/dedup-list :maxlen size))
                                :m (atom {})}))
+
+
+(defn start [{:keys [size] :as this}]
+  this)
+
+
+(defn stop [this]
+  this)

@@ -4,10 +4,9 @@
             [cognitect.transit :as t]
             #_[clojure.core.async :refer [go go-loop <! >! put!] :as a]
             [clj-karabiner.storage-backend :as sb]
-            [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as sg]
-            [taoensso.nippy :as n])
+            #_[taoensso.nippy :as n])
   (:import [java.io ByteArrayOutputStream ByteArrayInputStream]
+           [java.util.concurrent TimeUnit]
            [org.apache.kafka.clients.admin AdminClient NewTopic]
            [org.apache.kafka.clients.producer KafkaProducer ProducerRecord]
            [org.apache.kafka.clients.consumer KafkaConsumer]
@@ -146,21 +145,33 @@
 
 (defn kafka-storage-backend [& {:keys [topic-prefix bootstrap-server topic-fn key-fn value-fn partition-count replication-factor]
                                 :or {bootstrap-server "localhost:9092"}}]
+  (map->KafkaStorageBackend {:topic-prefix       (str (or topic-prefix "storage") "-")
+                             :bootstrap-server   bootstrap-server
+                             :topic-fn           (or topic-fn :topic)
+                             :key-fn             (or key-fn :key)
+                             :value-fn           (or value-fn :value)
+                             :partition-count    (or partition-count 100)
+                             :replication-factor (or partition-count 1)
+                             :current-position   (atom {})}))
+
+
+(defn start [{:keys [bootstrap-server] :as this}]
   (let [admin (AdminClient/create {"bootstrap.servers" bootstrap-server})
         producer (KafkaProducer. {"bootstrap.servers" bootstrap-server
                                   "key.serializer"    "clj_karabiner.storage_backend.kafka.TransitSerializer"
                                   "value.serializer"  "clj_karabiner.storage_backend.kafka.TransitSerializer"})
-        ksb (map->KafkaStorageBackend {:topic-prefix       (str (or topic-prefix "storage") "-")
-                                       :bootstrap-server   bootstrap-server
-                                       :topic-fn           (or topic-fn :topic)
-                                       :key-fn             (or key-fn :key)
-                                       :value-fn           (or value-fn :value)
-                                       :partition-count    (or partition-count 100)
-                                       :replication-factor (or partition-count 1)
-                                       :admin              admin
-                                       :producer           producer
-                                       :current-position   (atom {})})]
+        ksb (merge this {:admin admin
+                         :producer producer
+                         :current-position (atom {})})]
     (assoc ksb :topics (atom (list-topics ksb)))))
+
+
+(defn stop [{:keys [admin producer] :as this}]
+  (.close producer 1000 TimeUnit/MILLISECONDS)
+  (.close admin 1000 TimeUnit/MILLISECONDS)
+  (merge this {:admin nil
+               :producer nil
+               :current-position (atom {})}))
 
 
 
@@ -168,7 +179,8 @@
 ;;; sample invocations
 ;;;
 
-#_(let [be (kafka-storage-backend)]
+#_(let [be (-> (kafka-storage-backend)
+               start)]
   (sb/append be {:topic "supertopic555" :key "foo" :value "foov"})
   (sb/append be {:topic "supertopic555" :key "bar" :value "barv"})
   (sb/append be {:topic "supertopic666" :key "baz" :value "bazv"})
@@ -176,37 +188,41 @@
 
 
 ;;; generate some data
-#_(let [e-pool (set (for [ns ["artist" "record" "song"]
-                        id (range 1000)]
-                    (keyword ns (str "id" id))))]
-  (s/def ::e   e-pool)
-  (s/def ::eav (s/or :name   (s/cat :e ::e :a #{:name}   :v string?)
-                     :length (s/cat :e ::e :a #{:length} :v number?)
-                     :ref    (s/cat :e ::e :a #{:ref}    :v ::e)
-                     :date   (s/cat :e ::e :a #{:date}   :v inst?)))
+#_(do (require '[clojure.spec.alpha :as s]
+               '[clojure.spec.gen.alpha :as sg])
+      (let [e-pool (set (for [ns ["artist" "record" "song"]
+                              id (range 1000)]
+                          (keyword ns (str "id" id))))]
+        (s/def ::e   e-pool)
+        (s/def ::eav (s/or :name   (s/cat :e ::e :a #{:name}   :v string?)
+                           :length (s/cat :e ::e :a #{:length} :v number?)
+                           :ref    (s/cat :e ::e :a #{:ref}    :v ::e)
+                           :date   (s/cat :e ::e :a #{:date}   :v inst?)))
 
-  (let [be (kafka-storage-backend
-            :topic-prefix "factdb"
-            :topic-fn (fn [[e a v t :as fact]]
-                        (namespace e))
-            :key-fn (fn [[e a v t :as fact]]
-                      (name e))
-            :value-fn identity)]
-    (dotimes [i 1000]
-      (let [g    (s/gen ::eav)
-            t    (int (/ i 3))
-            fact (-> (sg/generate g) vec (conj t))]
-        (sb/append be fact)))))
+        (let [be (-> (kafka-storage-backend
+                      :topic-prefix "factdb"
+                      :topic-fn (fn [[e a v t :as fact]]
+                                  (namespace e))
+                      :key-fn (fn [[e a v t :as fact]]
+                                (name e))
+                      :value-fn identity)
+                     start)]
+          (dotimes [i 1000]
+            (let [g    (s/gen ::eav)
+                  t    (int (/ i 3))
+                  fact (-> (sg/generate g) vec (conj t))]
+              (sb/append be fact))))))
 
 
 ;;; load kafka data
-#_(let [be (kafka-storage-backend
-          :topic-prefix "factdb"
-          :topic-fn (fn [[e a v t :as fact]]
-                      (namespace e))
-          :key-fn (fn [[e a v t :as fact]]
-                    (name e))
-          :value-fn identity)
+#_(let [be (-> (kafka-storage-backend
+                :topic-prefix "factdb"
+                :topic-fn (fn [[e a v t :as fact]]
+                            (namespace e))
+                :key-fn (fn [[e a v t :as fact]]
+                          (name e))
+                :value-fn identity)
+               start)
       facts (doall (sb/load be))
       ;;;pos0 @(:current-position be)
       #_pos1 #_(do (sb/append be [:foo/bar :name "foobar" 111])

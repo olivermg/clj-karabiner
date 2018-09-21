@@ -24,3 +24,11 @@
 
 (defn atom-kvstore []
   (map->AtomKvStore {:a (atom {})}))
+
+
+(defn start [this]
+  this)
+
+
+(defn stop [this]
+  this)

@@ -27,3 +27,11 @@
 
   ([content]
    (map->MemoryStorageBackend {:storage (atom content)})))
+
+
+(defn start [this]
+  this)
+
+
+(defn stop [this]
+  this)

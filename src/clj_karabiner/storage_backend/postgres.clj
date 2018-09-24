@@ -88,5 +88,9 @@
 ;;; sample invocations
 ;;;
 
-(let [be (postgres-storage-backend "jdbc:postgresql://localhost/factstore"
-                                   "oliver" "oliver")])
+#_(let [be (-> (postgres-storage-backend "jdbc:postgresql://localhost/factstore"
+                                       "factstore" "factstore"
+                                       :tablename "facts" :ssl? false)
+             start)]
+  (sb/append be [:x (rand-int 1000)])
+  (sb/load-from-position be 0))

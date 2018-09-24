@@ -17,7 +17,8 @@
 
                  [com.taoensso/carmine "2.18.1"]
                  #_[spootnik/kinsky "0.1.22"]
-                 [org.apache.kafka/kafka-clients "2.0.0"]]
+                 [org.apache.kafka/kafka-clients "2.0.0"]
+                 [org.postgresql/postgresql "42.2.5"]]
 
   :profiles {:dev {:dependencies [[org.clojure/test.check "0.9.0"]
                                   [criterium "0.4.4"]

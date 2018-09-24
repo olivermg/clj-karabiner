@@ -16,15 +16,17 @@
         java.util.Date (.setDate s v)))))
 
 
-(defn- to-transit [v]
+(defn- to-transitstring [v]
   (let [out (ByteArrayOutputStream. 10)
         w (t/writer out :json)]
     (t/write w v)
-    (.toByteArray out)))
+    (-> (.toByteArray out)
+        (String. "UTF-8"))))
 
 
-(defn- from-transit [tv]
-  (let [in (ByteArrayInputStream. tv)
+(defn- from-transitstring [tv]
+  (let [in (-> (.getBytes tv "UTF-8")
+               (ByteArrayInputStream.))
         r (t/reader in :json)]
     (t/read r)))
 
@@ -35,24 +37,26 @@
   sb/LoadableStorageBackend
 
   (load-from-position [this position]
-    (let [sql (str "select * from \"" tablename "\" where position >= ?")
-          stmt (doto (.preparedStatement connection)
+    (let [sql (str "select fact from \"" tablename "\" where position >= ? order by position asc")
+          stmt (doto (.prepareStatement connection sql)
                  (.setLong 1 position))
-          dbresult (.executeQuery stmt sql)
+          resultset (.executeQuery stmt)
           result (transient [])]
-      (loop [row (.next dbresult)]
-        (if row
-          (do (conj! result row)
-              (recur (.next dbresult)))
+      (loop [success? (.next resultset)]
+        (if success?
+          (do (conj! result (-> resultset
+                                (.getString 1)
+                                (from-transitstring)))
+              (recur (.next resultset)))
           (persistent! result)))))
 
   sb/AppendableStorageBackend
 
   (append [{:keys [tablename] :as this} obj]
     (let [sql (str "insert into \"" tablename "\" (fact) values (?)")
-          stmt (doto (.preparedStatement connection)
-                 (.setString 1 (to-transit obj)))]
-      (.executeInsert stmt sql))))
+          stmt (doto (.prepareStatement connection sql)
+                 (.setString 1 (to-transitstring obj)))]
+      (.execute stmt))))
 
 
 (defn postgres-storage-backend [jdbc-url user password & {:keys [tablename ssl?]

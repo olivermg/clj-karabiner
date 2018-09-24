@@ -36,6 +36,7 @@
 
   sb/LoadableStorageBackend
 
+  ;;; TODO: implement this via lazy loading (lazy-seq, see kafka implementation for reference):
   (load-from-position [this position]
     (let [sql (str "select fact from \"" tablename "\" where position >= ? order by position asc")
           stmt (doto (.prepareStatement connection sql)

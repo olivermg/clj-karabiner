@@ -18,7 +18,8 @@
                  [com.taoensso/carmine "2.18.1"]
                  #_[spootnik/kinsky "0.1.22"]
                  [org.apache.kafka/kafka-clients "2.0.0"]
-                 [org.postgresql/postgresql "42.2.5"]]
+                 [org.postgresql/postgresql "42.2.5"]
+                 [com.amazonaws/aws-java-sdk-dynamodb "1.11.414"]]
 
   :profiles {:dev {:dependencies [[org.clojure/test.check "0.9.0"]
                                   [criterium "0.4.4"]
@@ -26,7 +27,9 @@
                                   [org.apache.logging.log4j/log4j-api "2.11.1"]
                                   [org.apache.logging.log4j/log4j-core "2.11.1"]]
                    :source-paths ["dev"]
-                   :repl-options {:init-ns user}
+                   :repl-options {:init-ns user
+                                  :host "0.0.0.0"
+                                  :port 9988}
                    :java-opts ["-Dlog4j.configurationFile=./resources/log4j2-dev.properties"]}}
 
   :release-tasks [["vcs" "assert-committed"]
